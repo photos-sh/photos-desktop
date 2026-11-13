@@ -1,0 +1,47 @@
+[package]
+name = "photos-desktop"
+version = "1.0.0"
+description = "Photos.sh desktop app: batch-process and edit product photos with the Photos.sh API."
+authors = ["Vallic"]
+license = "MIT"
+repository = "https://github.com/photos-sh/photos-desktop"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+
+[lib]
+name = "photos_desktop"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "photos-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["fs", "io-util", "macros", "rt-multi-thread", "sync", "time"] }
+tokio-util = "0.7"
+futures-util = "0.3"
+reqwest = { version = "0.13", default-features = false, features = ["native-tls", "http2", "multipart", "stream", "json", "query", "system-proxy"] }
+keyring = "4"
+tempfile = "3"
+walkdir = "2"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "tiff", "bmp", "gif", "webp"] }
+thiserror = "2"
+percent-encoding = "2"
+
+[dev-dependencies]
+axum = { version = "0.8", features = ["multipart"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

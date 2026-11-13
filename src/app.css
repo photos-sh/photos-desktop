@@ -1,0 +1,477 @@
+/*
+ * The Photos.sh look: "studio and shell". Warm paper and ink, Geist and
+ * Geist Mono, and one amber accent for the logo's cursor and small
+ * highlights. The tokens are those of the Photos.sh console. Light and
+ * dark follow the system.
+ */
+
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/Geist-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/GeistMono-Variable.woff2") format("woff2");
+}
+
+:root {
+  color-scheme: light;
+
+  --ps-font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ps-mono: "Geist Mono", ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  --ps-brand: #141518;
+  --ps-brand-hover: #2a2c31;
+  --ps-brand-soft: #efede7;
+  --ps-on-brand: #fff;
+  --ps-accent: #ffb000;
+  --ps-accent-text: #9a5b00;
+  --ps-logo-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M13 14l11 10-11 10' fill='none' stroke='%23141518' stroke-width='5'/%3E%3Cpath fill='%23ffb000' d='M27 30h10v5H27z'/%3E%3C/svg%3E");
+
+  --ps-bg: #f6f5f1;
+  --ps-surface: #fff;
+  --ps-surface-2: #f1f0eb;
+  --ps-surface-3: #e9e7e1;
+  --ps-border: #e4e2dc;
+  --ps-border-strong: #cfccc4;
+  --ps-text: #141518;
+  --ps-text-2: #4a4d55;
+  --ps-text-3: #64676f;
+  --ps-focus: #141518;
+  --ps-overlay: rgb(20 21 24 / 45%);
+
+  --ps-success: #2b8a3e;
+  --ps-success-soft: #ebfbee;
+  --ps-success-text: #1f6e31;
+  --ps-warning: #e8890c;
+  --ps-warning-soft: #fff4e6;
+  --ps-warning-text: #8f4a00;
+  --ps-danger: #e03131;
+  --ps-danger-soft: #fff5f5;
+  --ps-danger-text: #b02525;
+  --ps-info: #1c7ed6;
+  --ps-info-soft: #e7f5ff;
+  --ps-info-text: #1864ab;
+  --ps-neutral: #85878d;
+  --ps-neutral-soft: #f1f0eb;
+  --ps-neutral-text: #4a4d55;
+
+  --ps-checker-a: #ece9e1;
+  --ps-checker-b: #fff;
+  --ps-mask: rgb(255 176 0 / 55%);
+
+  --ps-space-1: 0.25rem;
+  --ps-space-2: 0.5rem;
+  --ps-space-3: 0.75rem;
+  --ps-space-4: 1rem;
+  --ps-space-5: 1.25rem;
+  --ps-space-6: 1.5rem;
+  --ps-space-8: 2rem;
+  --ps-radius-sm: 8px;
+  --ps-radius: 10px;
+  --ps-radius-lg: 14px;
+  --ps-radius-pill: 999px;
+  --ps-shadow-sm: 0 1px 2px rgb(20 21 24 / 5%);
+  --ps-shadow: 0 1px 3px rgb(20 21 24 / 8%), 0 1px 2px rgb(20 21 24 / 4%);
+  --ps-shadow-lg: 0 16px 40px rgb(20 21 24 / 14%), 0 2px 6px rgb(20 21 24 / 6%);
+  --ps-ease: cubic-bezier(0.2, 0, 0, 1);
+  --ps-duration: 160ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --ps-brand: #f2f1ec;
+    --ps-brand-hover: #fff;
+    --ps-brand-soft: rgb(242 241 236 / 9%);
+    --ps-on-brand: #141518;
+    --ps-accent-text: #ffb000;
+    --ps-logo-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M13 14l11 10-11 10' fill='none' stroke='%23f2f1ec' stroke-width='5'/%3E%3Cpath fill='%23ffb000' d='M27 30h10v5H27z'/%3E%3C/svg%3E");
+
+    --ps-bg: #0e0f11;
+    --ps-surface: #16171a;
+    --ps-surface-2: #1d1f23;
+    --ps-surface-3: #26282d;
+    --ps-border: #2a2c31;
+    --ps-border-strong: #3a3d44;
+    --ps-text: #f2f1ec;
+    --ps-text-2: #c2c4ca;
+    --ps-text-3: #8e9199;
+    --ps-focus: #f2f1ec;
+    --ps-overlay: rgb(0 0 0 / 60%);
+
+    --ps-success: #51cf66;
+    --ps-success-soft: rgb(81 207 102 / 12%);
+    --ps-success-text: #8ce99a;
+    --ps-warning: #fcc419;
+    --ps-warning-soft: rgb(252 196 25 / 12%);
+    --ps-warning-text: #ffe066;
+    --ps-danger: #ff6b6b;
+    --ps-danger-soft: rgb(255 107 107 / 12%);
+    --ps-danger-text: #ffa8a8;
+    --ps-info: #4dabf7;
+    --ps-info-soft: rgb(77 171 247 / 12%);
+    --ps-info-text: #a5d8ff;
+    --ps-neutral: #8e9199;
+    --ps-neutral-soft: rgb(142 145 153 / 14%);
+    --ps-neutral-text: #c2c4ca;
+
+    --ps-checker-a: #26282d;
+    --ps-checker-b: #1d1f23;
+
+    --ps-shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+    --ps-shadow: 0 1px 3px rgb(0 0 0 / 35%);
+    --ps-shadow-lg: 0 16px 40px rgb(0 0 0 / 50%), 0 2px 6px rgb(0 0 0 / 30%);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--ps-bg);
+  color: var(--ps-text);
+  font: 400 0.9375rem/1.5 var(--ps-font);
+  -webkit-font-smoothing: antialiased;
+  /* An app, not a page: text is selected where it is useful. */
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.25;
+}
+h1 {
+  font-size: 1.375rem;
+  letter-spacing: -0.015em;
+}
+h2 {
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+h3 {
+  font-size: 0.875rem;
+}
+
+p {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ps-focus);
+  outline-offset: 2px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+code,
+.mono {
+  font-family: var(--ps-mono);
+  font-size: 0.875em;
+}
+
+.selectable {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
+.muted {
+  color: var(--ps-text-3);
+}
+
+.small {
+  font-size: 0.8125rem;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Buttons. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0.375rem 0.875rem;
+  border: 1px solid var(--ps-border-strong);
+  border-radius: var(--ps-radius-sm);
+  background: var(--ps-surface);
+  color: var(--ps-text);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--ps-duration) var(--ps-ease),
+    border-color var(--ps-duration) var(--ps-ease);
+}
+.button:hover:not(:disabled) {
+  background: var(--ps-surface-2);
+}
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.button--primary {
+  border-color: var(--ps-brand);
+  background: var(--ps-brand);
+  color: var(--ps-on-brand);
+}
+.button--primary:hover:not(:disabled) {
+  border-color: var(--ps-brand-hover);
+  background: var(--ps-brand-hover);
+}
+.button--danger {
+  border-color: color-mix(in srgb, var(--ps-danger) 45%, var(--ps-border-strong));
+  color: var(--ps-danger-text);
+}
+.button--quiet {
+  border-color: transparent;
+  background: transparent;
+}
+.button--quiet:hover:not(:disabled) {
+  background: var(--ps-surface-3);
+}
+.button--small {
+  min-height: 1.875rem;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8125rem;
+}
+.button--icon {
+  width: 1.875rem;
+  min-height: 1.875rem;
+  padding: 0;
+}
+.button--wide {
+  width: 100%;
+}
+
+/* Form controls. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.field > label,
+.field > .label,
+.label {
+  color: var(--ps-text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.help {
+  color: var(--ps-text-3);
+  font-size: 0.8125rem;
+}
+.input,
+.select {
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--ps-border-strong);
+  border-radius: var(--ps-radius-sm);
+  background-color: var(--ps-surface);
+  color: var(--ps-text);
+  font: inherit;
+  font-size: 0.875rem;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.input:focus,
+.select:focus {
+  border-color: var(--ps-focus);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ps-focus) 22%, transparent);
+}
+.input:disabled,
+.select:disabled {
+  background-color: var(--ps-surface-2);
+  color: var(--ps-text-3);
+  cursor: not-allowed;
+}
+.input[aria-invalid="true"] {
+  border-color: var(--ps-danger);
+}
+.input::placeholder {
+  color: var(--ps-text-3);
+  opacity: 1;
+}
+.input[type="color"] {
+  width: 3rem;
+  padding: 0.2rem;
+  cursor: pointer;
+}
+.select {
+  padding-right: 2rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23868e96' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1rem;
+  appearance: none;
+}
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  margin: 0;
+  accent-color: var(--ps-brand);
+}
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--ps-brand);
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--ps-space-2);
+}
+.row--wrap {
+  flex-wrap: wrap;
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ps-space-3);
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ps-space-3);
+}
+.stack--loose {
+  gap: var(--ps-space-5);
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Surfaces. */
+.card {
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius);
+  background: var(--ps-surface);
+  box-shadow: var(--ps-shadow-sm);
+}
+.card--padded {
+  padding: var(--ps-space-5);
+}
+
+/* A status in a few words. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.1rem 0.55rem;
+  border-radius: var(--ps-radius-pill);
+  background: var(--tone-soft, var(--ps-neutral-soft));
+  color: var(--tone-text, var(--ps-neutral-text));
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tone-success {
+  --tone: var(--ps-success);
+  --tone-soft: var(--ps-success-soft);
+  --tone-text: var(--ps-success-text);
+}
+.tone-danger {
+  --tone: var(--ps-danger);
+  --tone-soft: var(--ps-danger-soft);
+  --tone-text: var(--ps-danger-text);
+}
+.tone-warning {
+  --tone: var(--ps-warning);
+  --tone-soft: var(--ps-warning-soft);
+  --tone-text: var(--ps-warning-text);
+}
+.tone-info {
+  --tone: var(--ps-info);
+  --tone-soft: var(--ps-info-soft);
+  --tone-text: var(--ps-info-text);
+}
+.tone-neutral {
+  --tone: var(--ps-neutral);
+  --tone-soft: var(--ps-neutral-soft);
+  --tone-text: var(--ps-neutral-text);
+}
+
+/* Transparency, as in the logo. */
+.checker {
+  background: repeating-conic-gradient(var(--ps-checker-a) 0% 25%, var(--ps-checker-b) 0% 50%) 0 0 / 20px 20px;
+}
+
+.spinner {
+  width: 1em;
+  height: 1em;
+  flex: none;
+  border: 2px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 1.6s !important;
+  }
+}

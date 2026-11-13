@@ -1,0 +1,59 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Photos.sh",
+  "mainBinaryName": "photos-desktop",
+  "version": "1.0.0",
+  "identifier": "sh.photos.desktop",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Photos.sh",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 920,
+        "minHeight": 620,
+        "dragDropEnabled": true
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self'",
+        "img-src": "'self' data: preview: http://preview.localhost",
+        "connect-src": "ipc: http://ipc.localhost",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'",
+        "frame-ancestors": "'none'"
+      },
+      "freezePrototype": true,
+      "capabilities": ["main"]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Photography",
+    "shortDescription": "Batch-process and edit product photos with Photos.sh",
+    "longDescription": "Remove backgrounds, upscale, remove text, resize and fix product photos for marketplaces, one at a time or by the folder, with the Photos.sh API.",
+    "copyright": "Copyright (c) 2026 Vallic",
+    "license": "MIT",
+    "homepage": "https://photos.sh",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

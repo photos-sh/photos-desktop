@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "All the main window may do: listen for the core's events (progress, dropped files). The app's own commands are the only other entry points; no file-system, shell, HTTP or dialog access is given to the web view.",
+  "windows": ["main"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
+}
