@@ -62,7 +62,10 @@ async fn sends_the_image_as_multipart_with_auth_and_query() {
         Some(format!("Bearer {TEST_KEY}").as_str())
     );
     assert_eq!(r.header("user-agent"), Some(USER_AGENT));
-    assert!(USER_AGENT.starts_with("photos-sh-desktop/0."));
+    assert_eq!(
+        USER_AGENT,
+        concat!("photos-sh-desktop/", env!("CARGO_PKG_VERSION"))
+    );
     assert_eq!(r.parts.len(), 1);
     let part = r.part("image").unwrap();
     assert_eq!(part.file_name.as_deref(), Some("shoe one.jpg"));
