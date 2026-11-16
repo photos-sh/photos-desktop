@@ -2,7 +2,6 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Photos.sh",
   "mainBinaryName": "photos-desktop",
-  "version": "1.0.0",
   "identifier": "sh.photos.desktop",
   "build": {
     "frontendDist": "../dist",
@@ -36,7 +35,9 @@
         "frame-ancestors": "'none'"
       },
       "freezePrototype": true,
-      "capabilities": ["main"]
+      "capabilities": [
+        "main"
+      ]
     }
   },
   "bundle": {
@@ -54,6 +55,18 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDRBQzgzNzM1MkI4OTEwNEIKUldSTEVJa3JOVGZJU3ZPNTVMa09GQWxZdlJGejVlMTY0dmNvcDhpR0Fjb3Y2SXM4ckZTdjhRYlYK",
+      "endpoints": [
+        "https://github.com/photos-sh/photos-desktop/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

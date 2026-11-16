@@ -17,6 +17,8 @@ import type {
   KeyStatus,
   Operation,
   Settings,
+  UpdateInfo,
+  UpdateProgress,
 } from "./types";
 
 export const core = {
@@ -57,6 +59,11 @@ export const core = {
   editorPickSave: () => invoke<string | null>("editor_pick_save"),
   editorSave: (path: string, replaceOriginal: boolean) =>
     invoke<string>("editor_save", { path, replaceOriginal }),
+
+  updateCheck: () => invoke<UpdateInfo | null>("update_check"),
+  /** Installs the update the last check found; the app restarts when it is done. */
+  updateInstall: () => invoke<void>("update_install"),
+  updateOpenReleases: () => invoke<void>("update_open_releases"),
 };
 
 export type Core = typeof core;
@@ -70,6 +77,11 @@ export const events = {
   batchError: (handler: (error: AppError) => void): Promise<UnlistenFn> =>
     listen<AppError>("batch:error", (e) => handler(e.payload)),
 };
+
+/** How far an update's download is, while it downloads. */
+export function onUpdateProgress(handler: (progress: UpdateProgress) => void): Promise<UnlistenFn> {
+  return listen<UpdateProgress>("update:progress", (e) => handler(e.payload));
+}
 
 /** Whatever was thrown, as an `AppError`. */
 export function toAppError(thrown: unknown): AppError {

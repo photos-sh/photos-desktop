@@ -5,7 +5,8 @@
 // Add `?key=none` to start without an API key, `?credits=3` for an account
 // that cannot pay for much, `?keychain=none` for a system without a
 // keychain, `?fail=unauthorized` to make every API call fail with that
-// code. `window.__mock.drop([...paths])` plays a file drop.
+// code, `?update=1.2.0` for a newer version to offer (`?update=fail` for a
+// check that fails). `window.__mock.drop([...paths])` plays a file drop.
 //
 // Nothing here is in a normal build (see main.ts).
 
@@ -102,7 +103,7 @@ function stepLabel(op: Operation): string {
   }
 }
 
-let settings: Settings = { base_url: "https://api.photos.sh", parallel: 3, default_format: null };
+let settings: Settings = { base_url: "https://api.photos.sh", parallel: 3, default_format: null, check_for_updates: true };
 const keychain = params.get("keychain") !== "none";
 let key: string | null = params.get("key") === "none" ? null : "ps_live_0123456789abcdef";
 let credits = Number(params.get("credits") ?? 240);
@@ -499,6 +500,21 @@ async function handle(command: string, args: Args): Promise<unknown> {
         fail("confirm_replace_original", "That would replace the original photo.");
       }
       return args.path;
+    case "update_check": {
+      const version = params.get("update");
+      if (version === "fail") fail("update_failed", "Could not check for updates: error sending request");
+      if (version === null) return null;
+      return { version, current_version: __APP_VERSION__, notes: "- Studio shot for remove background.\n- Updates from inside the app." };
+    }
+    case "update_install":
+      // A download in ten steps; a real install then restarts the app.
+      for (let step = 1; step <= 10; step += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await emit("update:progress", { downloaded: step * 1_200_000, total: 12_000_000 });
+      }
+      return fail("update_failed", "The mock cannot restart the app.");
+    case "update_open_releases":
+      return null;
     default:
       throw new Error(`the mock does not know the command ${command}`);
   }

@@ -54,6 +54,7 @@ fn core(dir: &Path, base_url: &str, key: &str) -> Core {
         base_url: base_url.to_string(),
         parallel: 2,
         default_format: None,
+        check_for_updates: false,
     })
     .unwrap();
     core

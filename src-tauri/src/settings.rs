@@ -20,6 +20,9 @@ pub struct Settings {
     pub parallel: usize,
     /// The format tools offer first; none keeps each tool's own default.
     pub default_format: Option<Format>,
+    /// Ask GitHub for a newer version when the app starts. The update is
+    /// only offered: nothing is downloaded without asking.
+    pub check_for_updates: bool,
 }
 
 impl Default for Settings {
@@ -28,6 +31,7 @@ impl Default for Settings {
             base_url: DEFAULT_BASE_URL.to_string(),
             parallel: DEFAULT_PARALLEL,
             default_format: None,
+            check_for_updates: true,
         }
     }
 }
@@ -94,6 +98,21 @@ mod tests {
         assert_eq!(s.base_url, "https://api.photos.sh");
         assert_eq!(s.parallel, 3);
         assert_eq!(s.default_format, None);
+        assert!(s.check_for_updates);
+    }
+
+    #[test]
+    fn settings_saved_before_updates_check_for_them() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(FILE_NAME);
+        std::fs::write(
+            &path,
+            r#"{"base_url": "https://api.photos.sh", "parallel": 4, "default_format": null}"#,
+        )
+        .unwrap();
+        let settings = Settings::load(&path);
+        assert_eq!(settings.parallel, 4);
+        assert!(settings.check_for_updates);
     }
 
     #[test]
@@ -105,6 +124,7 @@ mod tests {
             base_url: "http://127.0.0.1:8098/api".into(),
             parallel: 5,
             default_format: Some(Format::Webp),
+            check_for_updates: false,
         };
         settings.save(&path).unwrap();
         assert_eq!(Settings::load(&path), settings);

@@ -115,9 +115,10 @@ and (advanced) the API's base URL.
 - HEIC photos cannot be shown in the app (the system web view has no
   decoder), but they are processed like any other, and the results are
   shown. TIFF files are converted for display.
-- The app talks to the Photos.sh API and to nothing else. There is no
-  telemetry, no update check, and the web view inside the app is not allowed
-  to make network requests at all.
+- The app talks to the Photos.sh API, and to GitHub to check for updates
+  (which Settings can turn off), and to nothing else. There is no telemetry,
+  and the web view inside the app is not allowed to make network requests
+  at all.
 
 ## Install
 
@@ -133,6 +134,23 @@ The builds are **not signed yet**, so the system will warn:
 - **Windows:** in the SmartScreen dialog choose *More info → Run anyway*.
 - **Linux:** needs WebKitGTK 4.1 (`libwebkit2gtk-4.1-0` on Debian/Ubuntu,
   `webkit2gtk4.1` on Fedora), which the `.deb` and `.rpm` pull in.
+
+### Updates
+
+When the app starts, it asks GitHub whether a newer release is out, and if
+one is, offers it in a banner: *Install and restart* downloads it, checks its
+signature and installs it. Nothing is downloaded until you choose to.
+*Settings → Updates* checks by hand; *Settings → Preferences* turns the check
+at start off. An update is not installed while a batch runs, and the app
+restarts to finish it, so save a photo open in the editor first.
+
+Every update is signed with the project's update key, and the app refuses one
+whose signature does not match the public key it was built with. Updates
+install the way the app was installed: the AppImage replaces itself, the
+`.deb` and `.rpm` are installed with the system's package tool (it asks for
+your password) when the release's `latest.json` lists a signed one for them,
+and on Windows the setup `.exe` or `.msi` runs. If an update cannot be
+installed, the banner links to the release page to download it.
 
 Then open **Settings**, paste an API key from the Photos.sh console (your
 organisation's *API keys* page), and press **Save and test**.
@@ -294,12 +312,28 @@ npm run tauri -- icon src-tauri/app-icon.svg
 
 Pushing a tag `v*` runs `.github/workflows/release.yml`, which builds the
 installers on the three systems and attaches them to a **draft** GitHub
-release. Check it, then publish it by hand. Keep the version the same in
-`package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`.
+release. Check it, then publish it by hand: the apps out there are offered
+the version once it is published, not while it is a draft.
+
+The version is `src-tauri/Cargo.toml`'s (`tauri.conf.json` has none of its
+own), and `package.json` says the same. The workflow refuses a tag that
+differs from either, so bump both, commit, then tag.
+
+The installers are signed for updates with the key in the repository secret
+`TAURI_SIGNING_PRIVATE_KEY` (and its password in
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, for a key that has one); its public half is `plugins.updater.pubkey` in `tauri.conf.json`. The workflow
+writes `latest.json` beside the installers, which is what the app reads.
+Keep the private key safe and backed up: an app built with its public key
+accepts updates signed with it alone, so a lost key means asking everyone to
+download the next version by hand. To make a key:
+
+```sh
+npm run tauri -- signer generate -w ~/.tauri/photos-desktop.key
+```
 
 ## Not in 0.1
 
-Automatic updates, code signing and notarisation, watch folders, signing in
+Code signing and notarisation, watch folders, signing in
 through the browser, the reading tools (barcodes, labels, identify, captions,
 colour palettes, the list of faces), identity photos, a logo image as a
 watermark, and server-side batch jobs.

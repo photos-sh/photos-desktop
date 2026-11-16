@@ -5,12 +5,14 @@
   import { FORMATS, OPERATIONS } from "../lib/operations";
   import { accountLine, type Session } from "../lib/session.svelte";
   import type { AppError, Format } from "../lib/types";
+  import type { Updates } from "../lib/updates.svelte";
 
   interface Props {
     session: Session;
+    updates: Updates;
   }
 
-  let { session }: Props = $props();
+  let { session, updates }: Props = $props();
 
   const DEFAULT_BASE_URL = "https://api.photos.sh";
   /** Priced operations that are not in the batch's list. */
@@ -76,6 +78,7 @@
   let parallel = $state(3);
   let defaultFormat = $state<Format | "">("");
   let baseUrl = $state(DEFAULT_BASE_URL);
+  let checkForUpdates = $state(true);
   let saving = $state(false);
   let saved = $state(false);
   let settingsError = $state<AppError | null>(null);
@@ -87,13 +90,15 @@
     parallel = stored.parallel;
     defaultFormat = stored.default_format ?? "";
     baseUrl = stored.base_url;
+    checkForUpdates = stored.check_for_updates;
   });
 
   let changed = $derived(
     session.settings !== null &&
       (parallel !== session.settings.parallel ||
         defaultFormat !== (session.settings.default_format ?? "") ||
-        baseUrl.trim() !== session.settings.base_url),
+        baseUrl.trim() !== session.settings.base_url ||
+        checkForUpdates !== session.settings.check_for_updates),
   );
 
   async function saveSettings(event: SubmitEvent) {
@@ -107,6 +112,7 @@
         base_url: baseUrl.trim(),
         parallel,
         default_format: defaultFormat === "" ? null : defaultFormat,
+        check_for_updates: checkForUpdates,
       });
       saved = true;
     } catch (e) {
@@ -266,6 +272,15 @@
       </div>
     </div>
 
+    <div class="field">
+      <label class="check">
+        <input type="checkbox" bind:checked={checkForUpdates} aria-describedby="updates-help" /> Check for updates when the app starts
+      </label>
+      <span class="help" id="updates-help">
+        Asks GitHub whether a newer version is out. It is only offered: nothing is downloaded until you choose to install it.
+      </span>
+    </div>
+
     <details>
       <summary>Advanced</summary>
       <div class="field advanced">
@@ -305,9 +320,37 @@
     </div>
   </form>
 
+  <div class="card card--padded stack" aria-labelledby="updates-title" role="group">
+    <div class="row">
+      <h2 id="updates-title" class="grow">Updates</h2>
+      <button class="button button--small" type="button" disabled={updates.checking || updates.installing} onclick={() => updates.check()}>
+        {#if updates.checking}<span class="spinner"></span>{/if}
+        Check for updates
+      </button>
+    </div>
+    <p>This is Photos.sh desktop <span class="num">{__APP_VERSION__}</span>.</p>
+    <div aria-live="polite" class="stack">
+      {#if updates.error !== null && updates.available === null}
+        <ErrorNotice error={updates.error} ondismiss={() => (updates.error = null)} />
+      {:else if updates.available !== null}
+        <Notice tone="info">
+          {updates.available.version} is available.
+          {#snippet actions()}
+            <button class="button button--small button--primary" type="button" disabled={updates.installing} onclick={() => updates.install()}>
+              {#if updates.installing}<span class="spinner"></span>{/if}
+              Install and restart
+            </button>
+          {/snippet}
+        </Notice>
+      {:else if updates.upToDate}
+        <span class="muted small">You have the latest version.</span>
+      {/if}
+    </div>
+  </div>
+
   <p class="muted small about">
-    Photos.sh desktop {__APP_VERSION__}. No telemetry: the app talks only to the API above. Photos are sent there to
-    be processed; results are written where you choose.
+    No telemetry: the app talks only to the API above, and to GitHub to check for updates. Photos are sent to the API
+    to be processed; results are written where you choose.
   </p>
 </section>
 </div>

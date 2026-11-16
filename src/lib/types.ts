@@ -26,6 +26,21 @@ export interface Settings {
   base_url: string;
   parallel: number;
   default_format: Format | null;
+  /** Ask for a newer version when the app starts. */
+  check_for_updates: boolean;
+}
+
+/** A newer version of the app. */
+export interface UpdateInfo {
+  version: string;
+  current_version: string;
+  notes: string | null;
+}
+
+/** How far an update's download is. */
+export interface UpdateProgress {
+  downloaded: number;
+  total: number | null;
 }
 
 export type KeyStorage = "none" | "keychain" | "session";

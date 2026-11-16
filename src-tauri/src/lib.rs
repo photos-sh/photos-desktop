@@ -15,6 +15,7 @@ pub mod mask;
 pub mod ops;
 pub mod preview;
 pub mod settings;
+pub mod updates;
 
 #[cfg(test)]
 mod core_tests;
@@ -36,6 +37,7 @@ use crate::editor::EditorSnapshot;
 use crate::keychain::{KeyStatus, OsKeychain};
 use crate::ops::Operation;
 use crate::settings::Settings;
+use crate::updates::{Pending, UpdateInfo};
 
 /// Events the core sends to the UI.
 pub mod event {
@@ -355,6 +357,44 @@ async fn editor_save(core: Shared<'_>, path: String, replace_original: bool) -> 
     .await?
 }
 
+// --- updates -----------------------------------------------------------------
+
+#[tauri::command]
+async fn update_check(app: AppHandle, pending: State<'_, Pending>) -> Answer<Option<UpdateInfo>> {
+    updates::check(&app, &pending).await
+}
+
+/// Installs the update the last check found and restarts the app. Refused
+/// while a batch runs; a photo open in the editor is lost unless saved, which
+/// the UI asks about first.
+#[tauri::command]
+async fn update_install(
+    app: AppHandle,
+    core: Shared<'_>,
+    pending: State<'_, Pending>,
+) -> Answer<()> {
+    if core.batch().is_running() {
+        return Err(AppError::new(
+            "batch_running",
+            "A batch is running. Install the update when it has finished, or cancel it.",
+        ));
+    }
+    updates::install(&app, &pending).await?;
+    core.editor_close();
+    app.restart()
+}
+
+/// Opens the latest release on GitHub, for an update the app cannot install
+/// itself.
+#[tauri::command]
+async fn update_open_releases() -> Answer<()> {
+    blocking(|| {
+        tauri_plugin_opener::open_url(updates::RELEASES_PAGE, None::<&str>)
+            .map_err(|e| AppError::new("io", format!("Could not open the browser: {e}")))
+    })
+    .await?
+}
+
 // --- the preview protocol ----------------------------------------------------
 
 /// Answers `preview://localhost/<key>` (`http://preview.localhost/<key>` on
@@ -383,6 +423,8 @@ fn preview_response(core: &Core, uri_path: &str) -> Response<Vec<u8>> {
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(Pending::default())
         .setup(|app| {
             let settings_path = app.path().app_config_dir()?.join(settings::FILE_NAME);
             let core = Core::new(settings_path, Box::new(OsKeychain::default()))?;
@@ -429,6 +471,9 @@ pub fn run() {
             editor_go_to,
             editor_pick_save,
             editor_save,
+            update_check,
+            update_install,
+            update_open_releases,
         ])
         .build(tauri::generate_context!())
         .expect("the app could not start");

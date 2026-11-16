@@ -4,7 +4,7 @@ import { Session, accountLine } from "./session.svelte";
 import { appError, fakeCore } from "./testing";
 import type { Account, Catalog, KeyStatus, Settings } from "./types";
 
-const SETTINGS: Settings = { base_url: "https://api.photos.sh", parallel: 3, default_format: null };
+const SETTINGS: Settings = { base_url: "https://api.photos.sh", parallel: 3, default_format: null, check_for_updates: true };
 const NO_KEY: KeyStatus = { set: false, last4: null, storage: "none", keychain_available: true, keychain_error: null };
 const KEY: KeyStatus = { ...NO_KEY, set: true, last4: "cdef", storage: "keychain" };
 const ACCOUNT: Account = { account: "acc_1", credits: 42, prices: { resize: 1 }, unlimited: false };

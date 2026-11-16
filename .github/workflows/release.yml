@@ -1,8 +1,22 @@
 name: Release
 
 # A `v*` tag builds the installers and puts them in a draft GitHub release.
-# Nothing is signed or notarised yet (see the README): review the draft,
-# then publish it by hand.
+# Nothing is code-signed or notarised yet (see the README): review the
+# draft, then publish it by hand.
+#
+# The updates are signed, though: every installer gets a .sig made with the
+# update key, and latest.json (what the app reads to find a newer version)
+# lists them. The app installs nothing whose signature does not match the
+# public key in tauri.conf.json. The key is in two repository secrets:
+#
+#   TAURI_SIGNING_PRIVATE_KEY           the private key, as `tauri signer
+#                                       generate` wrote it
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  its password; leave it unset for a
+#                                       key made without one
+#
+# latest.json is only served once the release is published (GitHub's
+# releases/latest skips drafts), so the app is offered a version when you
+# publish it, not before.
 
 on:
   push:
@@ -15,8 +29,39 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # The installers are named and the app reports itself by Cargo.toml's
+  # version (tauri.conf.json has none of its own); a tag that says otherwise
+  # would publish a release whose files carry another number.
+  version:
+    name: the tag is the app's version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Cargo.toml, package.json and the tag agree
+        run: |
+          cargo="$(sed -n 's/^version = "\(.*\)"$/\1/p' src-tauri/Cargo.toml | head -n 1)"
+          npm="$(jq -r .version package.json)"
+          echo "Cargo.toml $cargo, package.json $npm, tag $GITHUB_REF_NAME"
+          if [ "$GITHUB_REF_NAME" != "v$cargo" ] || [ "$npm" != "$cargo" ]; then
+            echo "The tag and both versions have to be the same: set version in src-tauri/Cargo.toml and package.json, commit, then tag."
+            exit 1
+          fi
+      - name: the update key is set
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "The TAURI_SIGNING_PRIVATE_KEY secret is not set: the updates could not be signed."
+            exit 1
+          fi
+          if jq -e '.plugins.updater.pubkey | startswith("REPLACE")' src-tauri/tauri.conf.json > /dev/null; then
+            echo "plugins.updater.pubkey in src-tauri/tauri.conf.json is still the placeholder: the app could verify no update."
+            exit 1
+          fi
+
   bundle:
     name: ${{ matrix.name }}
+    needs: version
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -27,7 +72,8 @@ jobs:
             args: --bundles appimage,deb,rpm
           - name: macOS (universal dmg)
             os: macos-latest
-            args: --target universal-apple-darwin --bundles dmg
+            # The app bundle too: its .app.tar.gz is what an update installs.
+            args: --target universal-apple-darwin --bundles app,dmg
           - name: Windows (msi, nsis)
             os: windows-latest
             args: --bundles msi,nsis
@@ -55,11 +101,16 @@ jobs:
       - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Photos.sh desktop ${{ github.ref_name }}
-          releaseBody: See CHANGELOG.md for what changed. These builds are not signed.
+          releaseBody: See CHANGELOG.md for what changed. These builds are not code-signed; updates from inside the app are signed and checked.
           releaseDraft: true
           prerelease: false
-          uploadUpdaterJson: false
+          # latest.json, for the app's update check. Windows updates use the
+          # setup .exe (an .msi install is updated with the .msi).
+          uploadUpdaterJson: true
+          updaterJsonPreferNsis: true
           args: ${{ matrix.args }}

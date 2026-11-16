@@ -3,10 +3,12 @@
   import { onMount } from "svelte";
 
   import ErrorNotice from "./components/ErrorNotice.svelte";
+  import UpdateBanner from "./components/UpdateBanner.svelte";
   import { BatchStore } from "./lib/batch.svelte";
   import { EditorStore } from "./lib/editor.svelte";
   import { nav, type View } from "./lib/nav.svelte";
   import { Session, accountLine } from "./lib/session.svelte";
+  import { Updates } from "./lib/updates.svelte";
   import Batch from "./views/Batch.svelte";
   import Editor from "./views/Editor.svelte";
   import Settings from "./views/Settings.svelte";
@@ -14,6 +16,10 @@
   const session = new Session();
   const batch = new BatchStore();
   const editor = new EditorStore();
+  const updates = new Updates();
+
+  /** The check at start waits a moment, so it does not hold up the first screen. */
+  const UPDATE_CHECK_DELAY_MS = 3000;
 
   let ready = $state(false);
   let dragging = $state(false);
@@ -34,6 +40,10 @@
       keep(await batch.init());
       await editor.init();
       ready = true;
+      if (session.settings?.check_for_updates) {
+        const timer = setTimeout(() => void updates.check(true), UPDATE_CHECK_DELAY_MS);
+        keep(() => clearTimeout(timer));
+      }
     })();
 
     // Files dropped on the window go to the view that is showing.
@@ -136,6 +146,7 @@
     {:else if !ready}
       <p class="loading muted" role="status"><span class="spinner"></span> Starting…</p>
     {:else}
+      <UpdateBanner {updates} batchRunning={batch.running} editorOpen={editor.isOpen} />
       <!-- All three stay alive, so what was typed or painted survives a switch. -->
       <div class="pane" hidden={nav.view !== "batch"}>
         <Batch {batch} {session} dragging={dragging && nav.view === "batch"} />
@@ -144,7 +155,7 @@
         <Editor {editor} {session} dragging={dragging && nav.view === "editor"} />
       </div>
       <div class="pane" hidden={nav.view !== "settings"}>
-        <Settings {session} />
+        <Settings {session} {updates} />
       </div>
     {/if}
   </main>
@@ -245,11 +256,13 @@
     color: var(--ps-danger-text);
   }
   .main {
+    display: flex;
+    flex-direction: column;
     min-width: 0;
     min-height: 0;
   }
   .pane {
-    height: 100%;
+    flex: 1;
     min-height: 0;
   }
   .loading {

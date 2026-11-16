@@ -8,6 +8,11 @@ All notable changes to this project are written here. The format follows
 
 ### Added
 
+- **Updates from inside the app.** At start the app asks GitHub whether a
+  newer version is out and offers it in a banner; *Install and restart*
+  downloads it, checks its signature and installs it. *Settings → Updates*
+  checks by hand, and a preference turns the check at start off. Nothing is
+  installed while a batch runs.
 - **Studio shot**, an option of remove background in the batch and the
   editor, for a product on a plain, light backdrop (as in a light tent): the
   cutout also keeps what stands out from the backdrop and touches the
@@ -17,6 +22,10 @@ All notable changes to this project are written here. The format follows
 
 ### Fixed
 
+- The installers of 1.1.0 were named 1.0.0, and the app said it was 1.0.0:
+  the version had not been raised. The version is now `Cargo.toml`'s alone
+  (with `package.json` beside it), and a release tag that says otherwise is
+  refused.
 - When remove background finds no subject, the API returns the photo as it
   was. The file's line in a batch and the step in the editor now say "No
   subject found: nothing was cut out", not the crop's "No subject or face

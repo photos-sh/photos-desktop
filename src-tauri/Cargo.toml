@@ -1,6 +1,6 @@
 [package]
 name = "photos-desktop"
-version = "1.0.0"
+version = "1.1.0"
 description = "Photos.sh desktop app: batch-process and edit product photos with the Photos.sh API."
 authors = ["Vallic"]
 license = "MIT"
@@ -36,6 +36,7 @@ walkdir = "2"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "tiff", "bmp", "gif", "webp"] }
 thiserror = "2"
 percent-encoding = "2"
+tauri-plugin-updater = "2"
 
 [dev-dependencies]
 axum = { version = "0.8", features = ["multipart"] }
