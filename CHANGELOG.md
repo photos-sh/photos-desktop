@@ -4,6 +4,24 @@ All notable changes to this project are written here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Studio shot**, an option of remove background in the batch and the
+  editor, for a product on a plain, light backdrop (as in a light tent): the
+  cutout also keeps what stands out from the backdrop and touches the
+  product, such as the gift box, case or lid shown with a bottle. Shadows and
+  the floor below the product are left out. Off by default; when on, the app
+  sends `studio=true`.
+
+### Fixed
+
+- When remove background finds no subject, the API returns the photo as it
+  was. The file's line in a batch and the step in the editor now say "No
+  subject found: nothing was cut out", not the crop's "No subject or face
+  found: the crop is centred".
+
 ## [1.0.0] - Unreleased
 
 The first version: Linux, macOS and Windows.

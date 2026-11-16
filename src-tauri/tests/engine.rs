@@ -317,6 +317,7 @@ async fn the_editor_from_open_to_save() {
                 crop: false,
                 padding: None,
                 shadow: None,
+                studio: false,
                 format: None,
                 quality: None,
             },

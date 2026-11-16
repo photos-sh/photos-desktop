@@ -48,6 +48,9 @@ pub struct Marketplace {
 /// what its headers say.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ImageResult {
+    /// The endpoint that answered (`/v1/crop`): some headers mean different
+    /// things for different tools.
+    pub endpoint: String,
     pub bytes: Vec<u8>,
     pub content_type: String,
     pub width: Option<u32>,
@@ -66,7 +69,8 @@ pub struct ImageResult {
     /// `restore-faces` only: faces left alone, being large and detailed enough.
     pub faces_skipped: Option<u32>,
     /// `crop`: false when nothing was found to crop around; the crop is
-    /// then centred.
+    /// then centred. `remove-background`: false when no subject was found;
+    /// the photo then comes back as it was.
     pub subject_found: Option<bool>,
     /// `vectorize`: how many paths the SVG has.
     pub paths: Option<u32>,
@@ -117,7 +121,14 @@ impl ImageResult {
             });
         }
         if self.subject_found == Some(false) {
-            return Some("No subject or face found: the crop is centred".to_string());
+            return Some(
+                match self.endpoint.as_str() {
+                    "/v1/crop" => "No subject or face found: the crop is centred",
+                    "/v1/remove-background" => "No subject found: nothing was cut out",
+                    _ => "No subject found",
+                }
+                .to_string(),
+            );
         }
         if let Some(paths) = self.paths {
             return Some(format!("{paths} {}", plural(paths, "path", "paths")));
@@ -239,11 +250,24 @@ mod tests {
     }
 
     #[test]
-    fn notes_say_when_a_crop_found_no_subject_and_how_many_paths_an_svg_has() {
+    fn notes_say_when_no_subject_was_found_and_how_many_paths_an_svg_has() {
+        let not_found = |endpoint: &str| {
+            noted(|r| {
+                r.endpoint = endpoint.to_string();
+                r.subject_found = Some(false);
+            })
+            .unwrap()
+        };
         assert_eq!(
-            noted(|r| r.subject_found = Some(false)).unwrap(),
+            not_found("/v1/crop"),
             "No subject or face found: the crop is centred"
         );
+        // Remove background returns the photo as it was.
+        assert_eq!(
+            not_found("/v1/remove-background"),
+            "No subject found: nothing was cut out"
+        );
+        assert_eq!(not_found("/v1/run"), "No subject found");
         // A subject that was found is not worth a remark.
         assert_eq!(noted(|r| r.subject_found = Some(true)), None);
         assert_eq!(noted(|r| r.paths = Some(2435)).unwrap(), "2435 paths");

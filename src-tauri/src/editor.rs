@@ -382,6 +382,7 @@ mod tests {
         };
         editor.push("Hide faces", &hidden).unwrap();
         let centred = ImageResult {
+            endpoint: "/v1/crop".into(),
             subject_found: Some(false),
             ..result("image/png", b"b")
         };

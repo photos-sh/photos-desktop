@@ -42,6 +42,20 @@ describe("build", () => {
     expect(build({ ...newDraft(), shadow: "none" })).toEqual({ kind: "remove_background" });
   });
 
+  it("asks for a studio shot only when it is chosen", () => {
+    expect(newDraft().studio).toBe(false);
+    expect(build({ ...newDraft(), studio: true })).toEqual({ kind: "remove_background", studio: true });
+    expect(build({ ...newDraft(), background: "white", studio: true, shadow: "contact" })).toEqual({
+      kind: "remove_background",
+      background: "white",
+      shadow: "contact",
+      studio: true,
+    });
+    expect(build({ ...newDraft(), studio: false })).toEqual({ kind: "remove_background" });
+    // Another tool does not take it.
+    expect(build({ ...newDraft("upscale"), studio: true })).toEqual({ kind: "upscale", scale: 2 });
+  });
+
   it("builds enhance: nothing for automatic, else only the sliders that moved", () => {
     expect(build(newDraft("enhance"))).toEqual({ kind: "enhance" });
     // Sliders moved while "automatic" is chosen are not sent.

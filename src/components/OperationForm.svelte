@@ -35,6 +35,14 @@
 
   {#if draft.kind === "remove_background"}
     <div class="field">
+      <label class="check">
+        <input type="checkbox" aria-describedby="{prefix}-studio-help" bind:checked={draft.studio} /> Studio shot
+      </label>
+      <span class="help" id="{prefix}-studio-help">
+        Product on a plain light backdrop: keep the box or lid shown with it.
+      </span>
+    </div>
+    <div class="field">
       <span class="label" id="{prefix}-bg-label">Background</span>
       <div class="row row--wrap" role="radiogroup" aria-labelledby="{prefix}-bg-label">
         <label class="check">

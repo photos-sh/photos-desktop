@@ -202,6 +202,11 @@ pub enum Operation {
         /// A shadow under the subject; none when left out.
         #[serde(default)]
         shadow: Option<Shadow>,
+        /// A studio shot (a product on a plain, light backdrop): also keep
+        /// what stands out from the backdrop and touches the product, such
+        /// as its box or lid.
+        #[serde(default)]
+        studio: bool,
         #[serde(default)]
         format: Option<Format>,
         #[serde(default)]
@@ -654,6 +659,7 @@ impl Operation {
                 crop,
                 padding,
                 shadow,
+                studio,
                 format,
                 quality,
             } => {
@@ -662,6 +668,7 @@ impl Operation {
                 // Padding only means something when cropping.
                 push(&mut q, "padding", padding.filter(|_| *crop));
                 push(&mut q, "shadow", shadow.map(Shadow::as_str));
+                push(&mut q, "studio", studio.then_some("true"));
                 push_output(&mut q, *format, *quality);
             }
             Self::Upscale {
@@ -897,6 +904,7 @@ mod tests {
             crop: true,
             padding: Some(20),
             shadow: Some(Shadow::Contact),
+            studio: true,
             format: Some(Format::Jpg),
             quality: Some(90),
         };
@@ -907,6 +915,7 @@ mod tests {
                 ("crop", "true"),
                 ("padding", "20"),
                 ("shadow", "contact"),
+                ("studio", "true"),
                 ("format", "jpg"),
                 ("quality", "90")
             ]
@@ -917,6 +926,7 @@ mod tests {
             crop: false,
             padding: Some(20),
             shadow: None,
+            studio: false,
             format: None,
             quality: None,
         };
@@ -928,6 +938,13 @@ mod tests {
             serde_json::from_str::<Operation>(r#"{"kind":"remove_background","shadow":"long"}"#)
                 .is_err()
         );
+        // A studio shot is sent only when asked for; `false` is the API's default.
+        let op: Operation =
+            serde_json::from_str(r#"{"kind":"remove_background","studio":true}"#).unwrap();
+        assert_eq!(pairs(&op.query()), [("studio", "true")]);
+        let op: Operation =
+            serde_json::from_str(r#"{"kind":"remove_background","studio":false}"#).unwrap();
+        assert!(op.query().is_empty());
     }
 
     fn parsed(json: &str) -> Operation {

@@ -204,6 +204,7 @@ impl ApiClient {
         }
         let bytes = response.bytes().await.map_err(transport_error)?.to_vec();
         Ok(ImageResult {
+            endpoint: endpoint.to_string(),
             bytes,
             content_type,
             width: header_number(&headers, "x-image-width"),

@@ -11,9 +11,10 @@ Linux, macOS and Windows.
 **Batch.** Drop photos or whole folders on the window (or pick them), choose
 one operation, and start:
 
-- remove background (with a shadow under the product, if you want one),
-  upscale, remove text, resize / convert / compress, fix for a marketplace
-  (Amazon, eBay, Etsy, ...), or run a preset;
+- remove background (with a shadow under the product, if you want one; for
+  a studio shot, keeping the box or lid shown with the product), upscale,
+  remove text, resize / convert / compress, fix for a marketplace (Amazon,
+  eBay, Etsy, ...), or run a preset;
 - enhance (light and colour: automatic, or your own brightness, contrast,
   saturation and sharpening), denoise, colourise a black-and-white photo,
   restore faces, hide faces (blurred, pixelated or covered);
@@ -78,12 +79,21 @@ and (advanced) the API's base URL.
 - Some tools say what they found, on the file's line in a batch and under
   the picture in the editor: how many faces were hidden or restored (and how
   many were left alone for being large and detailed already), that a crop
-  found nothing to build around and is centred, how many paths an SVG has.
+  found nothing to build around and is centred, that remove background
+  found no subject ("No subject found: nothing was cut out", and the result
+  is the photo as it was), how many paths an SVG has.
   **Hide faces** reports "No faces found: nothing was hidden" for a photo it
   returns as it was: small faces, and faces seen from behind or mostly
   covered, are not found, so look at that count before relying on a result.
   Only covering a face leaves nothing of it; blur and pixelation stop a
   person from recognising it.
+- **Studio shot** (an option of remove background) is for a product on a
+  plain, light backdrop, as in a light tent. The cutout also keeps what
+  clearly stands out from the backdrop and touches the product, such as the
+  gift box, case or lid shown with a bottle, or a pale box that would
+  otherwise come out half transparent. Shadows and the floor below the product are left
+  out. A photo without a plain light backdrop is cut out as without the
+  option. It is off by default.
 - Three tools can mislead, and say so beside their options. **Colourise**
   guesses its colours: skin, sky and grass come out believable, the colour
   of clothes or a car is invented. **Restore faces** invents the detail it

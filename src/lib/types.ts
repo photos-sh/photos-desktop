@@ -69,6 +69,8 @@ export type Operation =
       crop?: boolean;
       padding?: number;
       shadow?: Shadow;
+      /** A product on a plain, light backdrop: keep its box or lid too. */
+      studio?: boolean;
       format?: Format;
       quality?: number;
     }

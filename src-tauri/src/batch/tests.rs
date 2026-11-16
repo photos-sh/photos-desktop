@@ -43,6 +43,7 @@ fn remove_background() -> Operation {
         crop: false,
         padding: None,
         shadow: None,
+        studio: false,
         format: None,
         quality: None,
     }
@@ -99,6 +100,7 @@ async fn processes_every_file_and_names_results_by_source_and_type() {
         crop: true,
         padding: Some(10),
         shadow: None,
+        studio: false,
         format: Some(Format::Png),
         quality: None,
     };
@@ -307,6 +309,27 @@ async fn each_file_says_how_many_faces_were_hidden_or_whether_a_subject_was_foun
             ("aspect".to_string(), "4:5".to_string()),
             ("zoom".to_string(), "true".to_string())
         ]
+    );
+
+    // Remove background returns a photo without a subject as it was.
+    store.reset().unwrap();
+    run(
+        &store,
+        &client,
+        Job {
+            operation: remove_background(),
+            output_dir: dir.path().join("cutouts"),
+        },
+        Selection::Unfinished,
+        1,
+        &events,
+    )
+    .await
+    .unwrap();
+    assert_eq!(status_of(&store, "landscape.jpg"), ItemStatus::Done);
+    assert_eq!(
+        note_of("landscape.jpg").as_deref(),
+        Some("No subject found: nothing was cut out")
     );
 }
 

@@ -185,6 +185,8 @@ export interface Draft {
   crop: boolean;
   padding: number | null;
   shadow: Shadow;
+  /** A studio shot: keep what stands out from the backdrop and touches the product. */
+  studio: boolean;
   // upscale
   scale: number;
   // remove text
@@ -247,6 +249,7 @@ export function newDraft(kind: OperationKind = "remove_background", format: Form
     crop: false,
     padding: null,
     shadow: "none",
+    studio: false,
     scale: 2,
     region: "background",
     matching: "",
@@ -429,6 +432,7 @@ export function build(draft: Draft): Operation {
         if (draft.padding != null && draft.padding > 0) op.padding = draft.padding;
       }
       if (draft.shadow !== "none") op.shadow = draft.shadow;
+      if (draft.studio) op.studio = true;
       return op;
     }
     case "upscale":

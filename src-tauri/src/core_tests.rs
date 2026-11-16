@@ -203,6 +203,7 @@ async fn the_editor_chains_tools_and_serves_its_pictures() {
                 crop: false,
                 padding: None,
                 shadow: None,
+                studio: false,
                 format: Some(Format::Png),
                 quality: None,
             },
