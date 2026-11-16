@@ -15,7 +15,7 @@ use serde::de::DeserializeOwned;
 use tokio_util::sync::CancellationToken;
 
 use super::error::{ApiError, code};
-use super::types::{Account, ImageResult, Marketplace, Preset};
+use super::types::{Account, ImageResult, Marketplace, Preset, Readings};
 
 pub const DEFAULT_BASE_URL: &str = "https://api.photos.sh";
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
@@ -225,6 +225,11 @@ impl ApiClient {
             faces_skipped: header_number(&headers, "x-faces-skipped"),
             subject_found: header_bool(&headers, "x-subject-found"),
             paths: header_number(&headers, "x-paths"),
+            readings: Readings::from_headers(
+                header_str(&headers, "x-barcodes"),
+                header_str(&headers, "x-text"),
+                header_bool(&headers, "x-text-truncated"),
+            ),
         })
     }
 

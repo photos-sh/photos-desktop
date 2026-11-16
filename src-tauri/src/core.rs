@@ -415,7 +415,7 @@ impl Core {
                     operation.label(),
                     operation.endpoint(),
                     operation.query(),
-                    Vec::new(),
+                    operation.parts(),
                 )
             }
             EditorTool::Erase {

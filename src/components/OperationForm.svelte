@@ -423,6 +423,120 @@
         {listProblem ?? preset?.description ?? "Each preset is a ready-made chain of tools."}
       </span>
     </div>
+  {:else if draft.kind === "recipe"}
+    <p class="help">
+      The steps run in this order on one upload, and are charged as one. Barcodes and text are read off the photo
+      before anything changes it.
+    </p>
+    <div class="field">
+      <span class="label">Read</span>
+      <label class="check"><input type="checkbox" bind:checked={draft.rBarcodes} /> Barcodes</label>
+      {#if draft.rBarcodes}
+        <label class="check indent">
+          <input type="checkbox" bind:checked={draft.rAllFormats} /> Every kind, not only EAN, UPC and ITF
+        </label>
+      {/if}
+      <label class="check"><input type="checkbox" bind:checked={draft.rText} /> Text, line by line</label>
+    </div>
+    <div class="field">
+      <span class="label">Edit</span>
+      <label class="check"><input type="checkbox" bind:checked={draft.rRemoveText} /> Remove text</label>
+      {#if draft.rRemoveText}
+        <select class="select indent" aria-label="Text to remove" bind:value={draft.rTextRegion}>
+          <option value="background">Beside the product (watermarks, captions, prices)</option>
+          <option value="all">All of it, labels on the product too</option>
+        </select>
+      {/if}
+      <label class="check"><input type="checkbox" bind:checked={draft.rUpscale} /> Upscale a small photo</label>
+      {#if draft.rUpscale}
+        <div class="field indent">
+          <label for="{prefix}-r-upscale">To a longest side of (pixels)</label>
+          <input class="input" id="{prefix}-r-upscale" type="number" min="16" max="10000" step="1" bind:value={draft.rUpscaleTo} />
+          <span class="help">Only a photo smaller than that is enlarged, at most 4×.</span>
+        </div>
+      {/if}
+      <label class="check"><input type="checkbox" bind:checked={draft.rCutout} /> Remove background</label>
+      {#if draft.rCutout}
+        <label class="check indent">
+          <input type="checkbox" bind:checked={draft.rStudio} /> Studio shot: keep the box or lid shown with it
+        </label>
+      {/if}
+    </div>
+    {#if draft.rCutout}
+      <div class="field">
+        <label for="{prefix}-r-layout">Place the product</label>
+        <select class="select" id="{prefix}-r-layout" bind:value={draft.rLayout}>
+          <option value="none">As it is in the photo</option>
+          <option value="frame">On a canvas of a set size</option>
+          <option value="crop">Cropped close around it</option>
+        </select>
+      </div>
+      {#if draft.rLayout === "frame"}
+        <div class="grid-2">
+          <div class="field">
+            <label for="{prefix}-r-width">Width (pixels)</label>
+            <input class="input" id="{prefix}-r-width" type="number" min="1" max="10000" step="1" bind:value={draft.rWidth} />
+          </div>
+          <div class="field">
+            <label for="{prefix}-r-height">Height (pixels)</label>
+            <input class="input" id="{prefix}-r-height" type="number" min="1" max="10000" step="1" bind:value={draft.rHeight} />
+          </div>
+        </div>
+        <div class="field">
+          <label for="{prefix}-r-fill">The product fills (% of the canvas)</label>
+          <input class="input" id="{prefix}-r-fill" type="number" min="5" max="100" step="1" placeholder="85" bind:value={draft.rFill} />
+        </div>
+        <label class="check">
+          <input type="checkbox" bind:checked={draft.rBottom} /> Stand it on the bottom edge
+        </label>
+      {:else if draft.rLayout === "crop"}
+        <div class="field">
+          <label for="{prefix}-r-padding">Room around it (% of its longest side)</label>
+          <input class="input" id="{prefix}-r-padding" type="number" min="0" max="100" step="1" placeholder="0" bind:value={draft.rPadding} />
+        </div>
+      {/if}
+      <div class="field">
+        <label for="{prefix}-r-shadow">Shadow under the product</label>
+        <select class="select" id="{prefix}-r-shadow" bind:value={draft.rShadow}>
+          <option value="none">None</option>
+          <option value="contact">Contact: soft, at its base</option>
+          <option value="drop">Drop: its outline, offset and blurred</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="{prefix}-r-background">Background</label>
+        <select class="select" id="{prefix}-r-background" bind:value={draft.rBackground}>
+          <option value="transparent">Transparent</option>
+          <option value="white">White</option>
+          <option value="colour">A colour</option>
+          <option value="gradient">A gradient, top to bottom</option>
+          <option value="blur">The photo's own, blurred</option>
+        </select>
+        {#if draft.rBackground === "colour" || draft.rBackground === "gradient"}
+          <div class="row">
+            <input
+              class="input"
+              type="color"
+              aria-label={draft.rBackground === "gradient" ? "Top colour" : "Background colour"}
+              bind:value={draft.rColour}
+            />
+            {#if draft.rBackground === "gradient"}
+              <input class="input" type="color" aria-label="Bottom colour" bind:value={draft.rGradientTo} />
+            {/if}
+          </div>
+        {/if}
+      </div>
+    {/if}
+    <div class="grid-2">
+      <div class="field">
+        <label for="{prefix}-r-side">Longest side (pixels)</label>
+        <input class="input" id="{prefix}-r-side" type="number" min="1" step="1" placeholder="as it is" bind:value={draft.rMaxSide} />
+      </div>
+      <div class="field">
+        <label for="{prefix}-r-max">Largest file (KB)</label>
+        <input class="input" id="{prefix}-r-max" type="number" min="1" step="1" placeholder="no limit" bind:value={draft.maxKb} />
+      </div>
+    </div>
   {/if}
 
   {#if usesOutput(draft.kind)}
@@ -430,7 +544,13 @@
       <div class="field">
         <label for="{prefix}-format">Format</label>
         <select class="select" id="{prefix}-format" bind:value={draft.format}>
-          <option value="">{draft.kind === "remove_background" ? "Automatic" : "Same as the photo"}</option>
+          <option value=""
+            >{draft.kind === "remove_background"
+              ? "Automatic"
+              : draft.kind === "recipe"
+                ? "Default: PNG"
+                : "Same as the photo"}</option
+          >
           {#each FORMATS as format (format.value)}
             <option value={format.value}>{format.label}</option>
           {/each}
@@ -460,6 +580,9 @@
     margin: 0;
     padding: 0;
     border: 0;
+  }
+  .indent {
+    margin-left: 1.6rem;
   }
   .caution {
     padding: 0.5rem 0.625rem;

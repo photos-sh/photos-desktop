@@ -76,6 +76,30 @@ export interface Catalog {
   marketplaces: Marketplace[];
 }
 
+/** Several steps on one upload. The service runs them in a fixed order:
+ *  read barcodes and text (on the photo as it came), remove text, upscale,
+ *  remove background, frame or crop, shadow, background, output. */
+export interface Recipe {
+  barcodes?: boolean;
+  /** Every barcode format, not only retail codes. */
+  all_formats?: boolean;
+  text?: boolean;
+  remove_text?: TextRegion;
+  /** Upscale a photo whose longest side is under this many pixels. */
+  upscale_to?: number;
+  remove_background?: boolean;
+  studio?: boolean;
+  layout?:
+    | { kind: "frame"; width: number; height: number; /** Percent. */ fill?: number; bottom?: boolean }
+    | { kind: "crop"; /** Percent of the subject's longest side. */ padding?: number };
+  shadow?: Shadow;
+  background?: { kind: "color"; color: string } | { kind: "gradient"; from: string; to: string } | { kind: "blur" };
+  format?: Format;
+  quality?: number;
+  max_side?: number;
+  max_bytes?: number;
+}
+
 /** An operation as the core takes it. Options left out keep the API's defaults. */
 export type Operation =
   | {
@@ -110,6 +134,7 @@ export type Operation =
     }
   | { kind: "fix"; marketplace: string }
   | { kind: "run"; preset: string }
+  | { kind: "recipe"; recipe: Recipe }
   | {
       kind: "enhance";
       /** Keep the automatic fix beside the settings given. */
@@ -215,6 +240,24 @@ export interface StepInfo {
   height: number | null;
   bytes: number | null;
   note: string | null;
+  /** What a recipe read off the photo. */
+  readings: Readings | null;
+}
+
+export interface Barcode {
+  /** `EAN-13`, `UPC-A`, `QR`, … */
+  format: string;
+  value: string;
+  /** The GS1-valid number of a retail code. */
+  gs1: string | null;
+}
+
+/** A field is `null` when its step was not in the recipe, empty when it found nothing. */
+export interface Readings {
+  barcodes: Barcode[] | null;
+  text: string[] | null;
+  /** Lines were left out: the service sends at most 8 KB of them. */
+  text_truncated: boolean;
 }
 
 export interface EditorSnapshot {

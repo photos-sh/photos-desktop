@@ -74,6 +74,82 @@ pub struct ImageResult {
     pub subject_found: Option<bool>,
     /// `vectorize`: how many paths the SVG has.
     pub paths: Option<u32>,
+    /// `run`: what a recipe's `[barcodes]` and `[text]` read.
+    pub readings: Option<Readings>,
+}
+
+/// A barcode a recipe read.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Barcode {
+    /// `EAN-13`, `UPC-A`, `QR`, …
+    pub format: String,
+    pub value: String,
+    /// The GS1-valid number of a retail code.
+    #[serde(default)]
+    pub gs1: Option<String>,
+}
+
+/// What a recipe's reading steps found. A field is `None` when its step was
+/// not in the recipe, and empty when it found nothing.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct Readings {
+    pub barcodes: Option<Vec<Barcode>>,
+    /// The lines read, top to bottom.
+    pub text: Option<Vec<String>>,
+    /// Lines were left out: the service sends at most 8 KB of them.
+    pub text_truncated: bool,
+}
+
+impl Readings {
+    /// From the `X-Barcodes`, `X-Text` and `X-Text-Truncated` headers; `None`
+    /// when there are none. A header that is not the JSON expected is left
+    /// out rather than failing a result that is otherwise fine.
+    pub fn from_headers(
+        barcodes: Option<&str>,
+        text: Option<&str>,
+        truncated: Option<bool>,
+    ) -> Option<Self> {
+        let barcodes = barcodes.and_then(|v| serde_json::from_str(v).ok());
+        let text = text.and_then(|v| serde_json::from_str(v).ok());
+        if barcodes.is_none() && text.is_none() {
+            return None;
+        }
+        Some(Self {
+            barcodes,
+            text,
+            text_truncated: truncated == Some(true),
+        })
+    }
+
+    /// One line for the step list or a batch item.
+    pub fn note(&self) -> String {
+        let mut parts = Vec::new();
+        match self.barcodes.as_deref() {
+            Some([]) => parts.push("No barcode found".to_string()),
+            Some([one]) => parts.push(format!("Barcode {}", one.value)),
+            Some(many) => parts.push(format!(
+                "Barcodes {}",
+                many.iter()
+                    .map(|b| b.value.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )),
+            None => {}
+        }
+        match self.text.as_ref().map(Vec::len) {
+            Some(0) => parts.push("no text found".to_string()),
+            Some(n) => parts.push(format!(
+                "{n} {} of text read",
+                plural(n as u32, "line", "lines")
+            )),
+            None => {}
+        }
+        let mut note = parts.join("; ");
+        if let Some(first) = note.get(..1) {
+            note = first.to_uppercase() + &note[1..];
+        }
+        note
+    }
 }
 
 impl ImageResult {
@@ -84,6 +160,9 @@ impl ImageResult {
 
     /// A short remark for the UI about what the operation reported.
     pub fn note(&self) -> Option<String> {
+        if let Some(readings) = &self.readings {
+            return Some(readings.note());
+        }
         if let Some(removed) = self.text_removed {
             let kept = self.text_kept.unwrap_or(0);
             return Some(match (removed, kept) {

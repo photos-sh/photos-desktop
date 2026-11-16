@@ -468,6 +468,7 @@ pub async fn run(
 
     let endpoint = job.operation.endpoint();
     let query = job.operation.query();
+    let parts = job.operation.parts();
     // `cancel` is the user's: it drops what is in flight. `stop` also ends
     // on an error that stops the batch, and only keeps new work from starting.
     let cancel = &work.cancel;
@@ -484,7 +485,8 @@ pub async fn run(
         .for_each_concurrent(
             parallel.clamp(MIN_PARALLEL, MAX_PARALLEL),
             |(id, source)| {
-                let (query, stopped, output_dir) = (&query, &stopped, &job.output_dir);
+                let (query, parts, stopped, output_dir) =
+                    (&query, &parts, &stopped, &job.output_dir);
                 let (failed, skipped, aborted) = (&failed, &skipped, &aborted);
                 async move {
                     if stop.is_cancelled() {
@@ -498,7 +500,7 @@ pub async fn run(
                     let received = tokio::select! {
                         biased;
                         () = cancel.cancelled() => Err(ApiError::Cancelled),
-                        result = client.process(endpoint, query, &source, &[], Some(stop)) => result,
+                        result = client.process(endpoint, query, &source, parts, Some(stop)) => result,
                     };
                     let outcome = match received {
                         Ok(result) => save(output_dir, &source, result).await,

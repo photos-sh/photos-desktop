@@ -14,6 +14,7 @@ pub mod keychain;
 pub mod mask;
 pub mod ops;
 pub mod preview;
+pub mod recipe;
 pub mod settings;
 pub mod updates;
 

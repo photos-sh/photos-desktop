@@ -26,6 +26,8 @@ import type {
   Estimate,
   KeyStatus,
   Operation,
+  Readings,
+  Recipe,
   Settings,
   StepInfo,
 } from "../lib/types";
@@ -66,6 +68,7 @@ const LOOK: Record<Operation["kind"], string> = {
   resize: "",
   fix: "cutout fixed text",
   run: "cutout",
+  recipe: "",
   enhance: "",
   denoise: "",
   colorize: "",
@@ -86,6 +89,16 @@ const NOTE: Partial<Record<Operation["kind"], string>> = {
 };
 
 /** The step's name, as the core gives it. */
+/** What the mock's photo of a ham gives a recipe that reads. */
+function mockReadings(r: Recipe): Readings | null {
+  if (!r.barcodes && !r.text) return null;
+  return {
+    barcodes: r.barcodes ? [{ format: "EAN-13", value: "3850104010017", gs1: "3850104010017" }] : null,
+    text: r.text ? ["Dalmatinski pršut", "Zaštićena oznaka zemljopisnog podrijetla", "500 g"] : null,
+    text_truncated: false,
+  };
+}
+
 function stepLabel(op: Operation): string {
   switch (op.kind) {
     case "upscale":
@@ -94,6 +107,8 @@ function stepLabel(op: Operation): string {
       return `Fix for ${op.marketplace}`;
     case "run":
       return `Preset: ${op.preset}`;
+    case "recipe":
+      return "Recipe";
     case "crop":
       return `Crop to ${op.aspect}`;
     case "expand":
@@ -306,6 +321,7 @@ function openEditor(path: string): EditorSnapshot {
     height: 480,
     bytes: 412_000,
     note: null,
+    readings: null,
   };
   editor = {
     session,
@@ -338,6 +354,7 @@ async function applyTool(tool: EditorTool): Promise<EditorSnapshot> {
   let look = `${before} erased`;
   let type = "image/png";
   let note: string | null = null;
+  let readings: Readings | null = null;
   if (tool.tool === "select") {
     if (tool.points.length === 0) fail("invalid", "Click the object to cut out first.");
     label = "Select object";
@@ -352,12 +369,19 @@ async function applyTool(tool: EditorTool): Promise<EditorSnapshot> {
     look = `${before} ${LOOK[op.kind]}`;
     note = NOTE[op.kind] ?? null;
     if ("format" in op && op.format) type = `image/${op.format === "jpg" ? "jpeg" : op.format}`;
+    if (op.kind === "recipe") {
+      const r = op.recipe;
+      if (r.remove_background) look = `${before} cutout`;
+      if (r.format) type = `image/${r.format === "jpg" ? "jpeg" : r.format}`;
+      readings = mockReadings(r);
+      note = readings ? "Barcode 3850104010017; 3 lines of text read" : null;
+    }
     credits -= PRICES[choice(op.kind).priceKey] ?? 0;
   }
   const id = Math.max(0, ...state.steps.map((s) => s.id)) + 1;
   state.steps = [
     ...state.steps.slice(0, state.cursor),
-    { id, label, content_type: type, width: 640, height: 480, bytes: 268_000, note },
+    { id, label, content_type: type, width: 640, height: 480, bytes: 268_000, note, readings },
   ];
   state.cursor = state.steps.length;
   state.looks.set(id, look);

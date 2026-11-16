@@ -39,7 +39,7 @@ export function appError(code: string, message = code): AppError {
 }
 
 function step(id: number, label: string): StepInfo {
-  return { id, label, content_type: "image/png", width: 100, height: 80, bytes: 1000, note: null };
+  return { id, label, content_type: "image/png", width: 100, height: 80, bytes: 1000, note: null, readings: null };
 }
 
 /** An editor snapshot with `steps` steps applied and the cursor at `cursor`. */

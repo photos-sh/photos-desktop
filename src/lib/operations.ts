@@ -11,6 +11,7 @@ import type {
   Operation,
   OperationKind,
   Position,
+  Recipe,
   Shadow,
   TextRegion,
   VectorMode,
@@ -123,6 +124,12 @@ export const OPERATIONS: readonly OperationChoice[] = [
     hint: "Apply a ready-made recipe.",
     priceKey: "run",
   },
+  {
+    kind: "recipe",
+    label: "Recipe: several steps at once",
+    hint: "Read barcodes and text, cut out, frame and finish in one request, charged once.",
+    priceKey: "run",
+  },
 ];
 
 export const FORMATS: readonly { value: Format; label: string }[] = [
@@ -172,6 +179,8 @@ export const API_DEFAULT = {
 export const MAX_MARK_TEXT = 200;
 
 export type BackgroundChoice = "transparent" | "white" | "colour";
+
+export type RecipeBackground = "transparent" | "white" | "colour" | "gradient" | "blur";
 
 /** Everything the forms can hold, for every kind at once, so switching the
  *  operation keeps what was typed. Empty number fields are `null`. */
@@ -237,6 +246,29 @@ export interface Draft {
   // vectorize
   vectorMode: VectorMode;
   curves: Curves;
+  // recipe: each step is on when ticked; "Largest file size" is maxKb
+  rBarcodes: boolean;
+  rAllFormats: boolean;
+  rText: boolean;
+  rRemoveText: boolean;
+  rTextRegion: TextRegion;
+  rUpscale: boolean;
+  rUpscaleTo: number | null;
+  rCutout: boolean;
+  rStudio: boolean;
+  rLayout: "none" | "frame" | "crop";
+  rWidth: number | null;
+  rHeight: number | null;
+  /** Percent of the canvas the product fills. */
+  rFill: number | null;
+  rBottom: boolean;
+  /** Percent of the product's longest side. */
+  rPadding: number | null;
+  rShadow: Shadow;
+  rBackground: RecipeBackground;
+  rColour: string;
+  rGradientTo: string;
+  rMaxSide: number | null;
 }
 
 export function newDraft(kind: OperationKind = "remove_background", format: Format | null = null): Draft {
@@ -286,6 +318,26 @@ export function newDraft(kind: OperationKind = "remove_background", format: Form
     markOpacity: API_DEFAULT.markOpacity,
     vectorMode: "color",
     curves: "spline",
+    rBarcodes: false,
+    rAllFormats: false,
+    rText: false,
+    rRemoveText: false,
+    rTextRegion: "background",
+    rUpscale: false,
+    rUpscaleTo: 1000,
+    rCutout: true,
+    rStudio: false,
+    rLayout: "none",
+    rWidth: 2000,
+    rHeight: 2000,
+    rFill: 85,
+    rBottom: false,
+    rPadding: null,
+    rShadow: "none",
+    rBackground: "white",
+    rColour: "#ffffff",
+    rGradientTo: "#e6e9ed",
+    rMaxSide: null,
   };
 }
 
@@ -397,7 +449,96 @@ export function problem(draft: Draft): string | null {
     }
     case "vectorize":
       return null;
+    case "recipe":
+      return recipeProblem(draft);
   }
+}
+
+/** The recipe's own rules, as the service checks them. */
+function recipeProblem(draft: Draft): string | null {
+  const staged = draft.rLayout !== "none" || draft.rShadow !== "none" || draft.rBackground !== "transparent";
+  const edits =
+    staged ||
+    draft.rRemoveText ||
+    draft.rUpscale ||
+    draft.rCutout ||
+    draft.format !== "" ||
+    draft.quality != null ||
+    draft.maxKb != null ||
+    draft.rMaxSide != null;
+  if (!edits && !draft.rBarcodes && !draft.rText) return "Choose at least one step.";
+  if (staged && !draft.rCutout) {
+    return "Framing, cropping, a shadow and a background need “Remove background”: set the background to transparent, or tick it.";
+  }
+  if (draft.rUpscale && !isWhole(draft.rUpscaleTo, 16, 10_000)) {
+    return "Upscale to a whole number of pixels, 16 to 10,000.";
+  }
+  if (draft.rCutout && draft.rLayout === "frame") {
+    if (!isWhole(draft.rWidth, 1, 10_000) || !isWhole(draft.rHeight, 1, 10_000) || draft.rWidth == null || draft.rHeight == null) {
+      return "The canvas is a whole number of pixels a side, 1 to 10,000.";
+    }
+    if (draft.rFill != null && !within(draft.rFill, 5, 100)) {
+      return "The product fills between 5 and 100 percent of the canvas.";
+    }
+  }
+  if (draft.rCutout && draft.rLayout === "crop" && draft.rPadding != null && !within(draft.rPadding, 0, 100)) {
+    return "The room around the product goes from 0 to 100 percent.";
+  }
+  if (draft.rCutout && draft.rBackground === "colour" && !COLOUR.test(draft.rColour)) {
+    return "Choose a background colour.";
+  }
+  if (draft.rCutout && draft.rBackground === "gradient" && (!COLOUR.test(draft.rColour) || !COLOUR.test(draft.rGradientTo))) {
+    return "Choose the gradient's two colours.";
+  }
+  if (draft.rCutout && draft.rBackground === "transparent" && draft.format === "jpg") {
+    return "JPEG has no transparency: choose a background, or PNG, WebP or AVIF.";
+  }
+  if (!isWhole(draft.rMaxSide, 1, 100_000)) return "The longest side is a whole number of pixels, 1 or more.";
+  if (draft.maxKb != null && !(draft.maxKb > 0)) return "The file size limit must be more than 0 KB.";
+  return null;
+}
+
+function buildRecipe(draft: Draft): Recipe {
+  const r: Recipe = { ...output(draft) };
+  if (draft.rBarcodes) {
+    r.barcodes = true;
+    if (draft.rAllFormats) r.all_formats = true;
+  }
+  if (draft.rText) r.text = true;
+  if (draft.rRemoveText) r.remove_text = draft.rTextRegion;
+  if (draft.rUpscale && draft.rUpscaleTo != null) r.upscale_to = draft.rUpscaleTo;
+  if (draft.rCutout) {
+    r.remove_background = true;
+    if (draft.rStudio) r.studio = true;
+    if (draft.rLayout === "frame" && draft.rWidth != null && draft.rHeight != null) {
+      r.layout = { kind: "frame", width: draft.rWidth, height: draft.rHeight };
+      if (draft.rFill != null) r.layout.fill = draft.rFill;
+      if (draft.rBottom) r.layout.bottom = true;
+    } else if (draft.rLayout === "crop") {
+      r.layout = { kind: "crop" };
+      if (draft.rPadding != null) r.layout.padding = draft.rPadding;
+    }
+    if (draft.rShadow !== "none") r.shadow = draft.rShadow;
+    switch (draft.rBackground) {
+      case "white":
+        r.background = { kind: "color", color: "white" };
+        break;
+      case "colour":
+        r.background = { kind: "color", color: draft.rColour.toLowerCase() };
+        break;
+      case "gradient":
+        r.background = { kind: "gradient", from: draft.rColour.toLowerCase(), to: draft.rGradientTo.toLowerCase() };
+        break;
+      case "blur":
+        r.background = { kind: "blur" };
+        break;
+      case "transparent":
+        break;
+    }
+  }
+  if (draft.rMaxSide != null) r.max_side = draft.rMaxSide;
+  if (draft.maxKb != null) r.max_bytes = Math.round(draft.maxKb * 1024);
+  return r;
 }
 
 /** Whether the kind has the format and quality options. Vectorize always
@@ -522,6 +663,8 @@ export function build(draft: Draft): Operation {
       if (draft.curves !== "spline") op.curves = draft.curves;
       return op;
     }
+    case "recipe":
+      return { kind: "recipe", recipe: buildRecipe(draft) };
   }
 }
 

@@ -3,6 +3,9 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::api::ExtraPart;
+use crate::recipe::Recipe;
+
 /// An output format (`format=` in the query).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -254,6 +257,10 @@ pub enum Operation {
     Run {
         preset: String,
     },
+    /// Several steps on one upload: `/v1/run` with a recipe of the user's.
+    Recipe {
+        recipe: Recipe,
+    },
     /// Light and colour. Without any setting the API fixes both by itself.
     Enhance {
         /// Keep the automatic fix beside the settings given.
@@ -445,6 +452,19 @@ fn push_output(query: &mut Vec<(String, String)>, format: Option<Format>, qualit
 }
 
 impl Operation {
+    /// The parts sent beside the image: a recipe's TOML.
+    pub fn parts(&self) -> Vec<ExtraPart> {
+        match self {
+            Self::Recipe { recipe } => vec![ExtraPart {
+                name: "recipe",
+                file_name: "recipe.toml",
+                mime: "application/toml",
+                bytes: recipe.to_toml().into_bytes(),
+            }],
+            _ => Vec::new(),
+        }
+    }
+
     /// The endpoint's path under the base URL.
     pub fn endpoint(&self) -> &'static str {
         match self {
@@ -453,7 +473,7 @@ impl Operation {
             Self::RemoveText { .. } => "/v1/remove-text",
             Self::Resize { .. } => "/v1/resize",
             Self::Fix { .. } => "/v1/fix",
-            Self::Run { .. } => "/v1/run",
+            Self::Run { .. } | Self::Recipe { .. } => "/v1/run",
             Self::Enhance { .. } => "/v1/enhance",
             Self::Denoise { .. } => "/v1/denoise",
             Self::Colorize { .. } => "/v1/colorize",
@@ -490,6 +510,7 @@ impl Operation {
             Self::Resize { .. } => "Resize / convert".to_string(),
             Self::Fix { marketplace } => format!("Fix for {marketplace}"),
             Self::Run { preset } => format!("Preset: {preset}"),
+            Self::Recipe { recipe } => format!("Recipe: {}", recipe.summary()),
             Self::Enhance { .. } => "Enhance".to_string(),
             Self::Denoise { .. } => "Denoise".to_string(),
             Self::Colorize { .. } => "Colourise".to_string(),
@@ -556,6 +577,7 @@ impl Operation {
                 }
                 Ok(())
             }
+            Self::Recipe { recipe } => recipe.validate(),
             Self::Enhance {
                 brightness,
                 contrast,
@@ -728,6 +750,8 @@ impl Operation {
             }
             Self::Fix { marketplace } => push(&mut q, "marketplace", Some(marketplace.trim())),
             Self::Run { preset } => push(&mut q, "preset", Some(preset.trim())),
+            // Everything is in the recipe part.
+            Self::Recipe { .. } => {}
             Self::Enhance {
                 auto,
                 brightness,

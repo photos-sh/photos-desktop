@@ -12,7 +12,7 @@
   import { FORMATS, build, newDraft, problem } from "../lib/operations";
   import { preview } from "../lib/preview";
   import type { Session } from "../lib/session.svelte";
-  import type { Format, OperationKind, SelectPick, Severity } from "../lib/types";
+  import type { Format, OperationKind, Readings, SelectPick, Severity } from "../lib/types";
 
   interface Props {
     editor: EditorStore;
@@ -53,6 +53,7 @@
     { tool: "resize", label: "Resize / convert", doing: "Resizing…" },
     { tool: "watermark", label: "Watermark", doing: "Adding the watermark…" },
     { tool: "fix", label: "Fix for a marketplace", doing: "Fixing for the marketplace…" },
+    { tool: "recipe", label: "Recipe", doing: "Running the recipe…" },
     { tool: "check", label: "Check", doing: "Checking…" },
   ];
 
@@ -119,6 +120,20 @@
     if (editor.confirmReplace !== null && !confirmDialog.open) confirmDialog.showModal();
     if (editor.confirmReplace === null && confirmDialog.open) confirmDialog.close();
   });
+
+  let copied = $state(false);
+
+  /** The barcodes, then the text, one to a line. */
+  async function copyReadings(readings: Readings) {
+    const lines = [...(readings.barcodes ?? []).map((b) => b.value), ...(readings.text ?? [])];
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      copied = true;
+      setTimeout(() => (copied = false), 1500);
+    } catch {
+      // Selecting the text by hand still works.
+    }
+  }
 
   const SEVERITY: Record<Severity, { tone: string; label: string }> = {
     error: { tone: "tone-danger", label: "Breaks a rule" },
@@ -337,6 +352,38 @@
               {#each report.marketplace?.notes ?? [] as note, n (n)}
                 <p class="small muted selectable">To check by eye: {note}</p>
               {/each}
+            </div>
+          {/if}
+
+          {#if snapshot.current.readings !== null}
+            {@const readings = snapshot.current.readings}
+            <div class="report stack" aria-live="polite">
+              <div class="row">
+                <h2 class="grow">Read from the photo</h2>
+                <button class="button button--small button--quiet" type="button" onclick={() => copyReadings(readings)}>
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+              {#if readings.barcodes !== null}
+                {#each readings.barcodes as code, n (n)}
+                  <p class="selectable">
+                    <span class="pill tone-neutral">{code.format}</span>
+                    <span class="mono">{code.value}</span>
+                  </p>
+                {:else}
+                  <p class="muted small">No barcode found.</p>
+                {/each}
+              {/if}
+              {#if readings.text !== null}
+                {#if readings.text.length === 0}
+                  <p class="muted small">No text found.</p>
+                {:else}
+                  <p class="lines selectable">{readings.text.join("\n")}</p>
+                {/if}
+                {#if readings.text_truncated}
+                  <p class="muted small">Only the first lines came back: there was more text than the service sends with a picture.</p>
+                {/if}
+              {/if}
             </div>
           {/if}
 
@@ -568,6 +615,9 @@
     border: 1px solid var(--ps-border);
     border-radius: var(--ps-radius-sm);
     gap: var(--ps-space-2);
+  }
+  .lines {
+    white-space: pre-line;
   }
   .finding {
     display: flex;

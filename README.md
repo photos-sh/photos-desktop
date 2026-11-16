@@ -14,7 +14,7 @@ one operation, and start:
 - remove background (with a shadow under the product, if you want one; for
   a studio shot, keeping the box or lid shown with the product), upscale,
   remove text, resize / convert / compress, fix for a marketplace (Amazon,
-  eBay, Etsy, ...), or run a preset;
+  eBay, Etsy, ...), run a preset, or a recipe of your own (below);
 - enhance (light and colour: automatic, or your own brightness, contrast,
   saturation and sharpening), denoise, colourise a black-and-white photo,
   restore faces, hide faces (blurred, pixelated or covered);
@@ -40,13 +40,22 @@ one operation, and start:
   erase (paint over an object with a brush), select object (click an object
   to cut it out), enhance, denoise, colourise, restore faces, hide faces,
   crop to a shape, expand, resize / convert, watermark, fix for a
-  marketplace, and check (quality findings and, with a marketplace, its
-  verdict);
+  marketplace, a recipe, and check (quality findings and, with a marketplace,
+  its verdict);
 - each tool works on the result of the one before. Undo and redo move
   through the steps; a before/after slider compares with the original;
   transparency is shown on a checkerboard;
 - **Save as** writes the current step. The original is replaced only when
   you pick its own path and confirm a second time.
+
+**Recipes.** In the batch and the editor, *Recipe* runs several steps on one
+upload, as one request charged as one: read the barcodes and the text, remove
+text, upscale a small photo, remove the background, place the product on a
+canvas of a set size or crop close around it, add a shadow and a background
+(white, a colour, a gradient or the photo's own, blurred), and set the size,
+format and file size. The steps always run in that order. Barcodes and text
+are read off the photo before anything changes it: the editor shows what was
+read beside the picture, with *Copy*; in the batch, each file's line says it.
 
 ![The editor: a cutout compared with the original](docs/screenshots/editor.png)
 
@@ -229,6 +238,7 @@ engine or a key; its header lists switches such as `?key=none` and
 src-tauri/                The Rust core
   src/api/                  the API client: requests, retries, errors, result types
   src/ops.rs                the operations and their query strings
+  src/recipe.rs             a recipe of the user's: its rules, and the TOML sent to /v1/run
   src/batch/                the batch: file list, planning (which files, names, cost), the runner
   src/editor.rs             the editor's steps (temporary files, undo/redo, save as)
   src/mask.rs               the erase mask, drawn from brush strokes
@@ -331,12 +341,13 @@ download the next version by hand. To make a key:
 npm run tauri -- signer generate -w ~/.tauri/photos-desktop.key
 ```
 
-## Not in 0.1
+## Not yet in the app
 
-Code signing and notarisation, watch folders, signing in
-through the browser, the reading tools (barcodes, labels, identify, captions,
-colour palettes, the list of faces), identity photos, a logo image as a
-watermark, and server-side batch jobs.
+Code signing and notarisation, watch folders, signing in through the
+browser, the reading tools on their own (labels, identify, captions, colour
+palettes, the list of faces; barcodes and text are read only as steps of a
+recipe), identity photos, a logo image as a watermark, and server-side batch
+jobs.
 
 ## Licence
 

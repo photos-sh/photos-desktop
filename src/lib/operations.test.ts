@@ -298,6 +298,7 @@ describe("the list of operations", () => {
       "vectorize",
       "fix",
       "run",
+      "run",
     ]);
     // Each kind once, each buildable from a fresh draft.
     expect(new Set(OPERATIONS.map((o) => o.kind)).size).toBe(OPERATIONS.length);
@@ -350,5 +351,80 @@ describe("the list of operations", () => {
       "bottom",
       "bottom-right",
     ]);
+  });
+});
+
+describe("recipe", () => {
+  it("starts as a cutout on white, and sends only the steps ticked", () => {
+    expect(problem(newDraft("recipe"))).toBeNull();
+    expect(build(newDraft("recipe"))).toEqual({
+      kind: "recipe",
+      recipe: { remove_background: true, background: { kind: "color", color: "white" } },
+    });
+  });
+
+  it("sends every step it is given", () => {
+    const draft = {
+      ...newDraft("recipe", "webp"),
+      quality: 85,
+      rBarcodes: true,
+      rAllFormats: true,
+      rText: true,
+      rRemoveText: true,
+      rTextRegion: "all" as const,
+      rUpscale: true,
+      rStudio: true,
+      rLayout: "frame" as const,
+      rBottom: true,
+      rShadow: "contact" as const,
+      rBackground: "gradient" as const,
+      rColour: "#FFFFFF",
+      rMaxSide: 1600,
+      maxKb: 300,
+    };
+    expect(problem(draft)).toBeNull();
+    expect(build(draft)).toEqual({
+      kind: "recipe",
+      recipe: {
+        format: "webp",
+        quality: 85,
+        barcodes: true,
+        all_formats: true,
+        text: true,
+        remove_text: "all",
+        upscale_to: 1000,
+        remove_background: true,
+        studio: true,
+        layout: { kind: "frame", width: 2000, height: 2000, fill: 85, bottom: true },
+        shadow: "contact",
+        background: { kind: "gradient", from: "#ffffff", to: "#e6e9ed" },
+        max_side: 1600,
+        max_bytes: 300 * 1024,
+      },
+    });
+  });
+
+  it("can only read, and then sends nothing else", () => {
+    const draft = { ...newDraft("recipe"), rCutout: false, rBackground: "transparent" as const, rBarcodes: true };
+    expect(problem(draft)).toBeNull();
+    expect(build(draft)).toEqual({ kind: "recipe", recipe: { barcodes: true } });
+  });
+
+  it("refuses what the service would refuse", () => {
+    const base = newDraft("recipe");
+    const refused: [Partial<typeof base>, string][] = [
+      [{ rCutout: false, rBackground: "transparent" }, "at least one step"],
+      [{ rCutout: false }, "need “Remove background”"],
+      [{ rBackground: "transparent", format: "jpg" }, "JPEG has no transparency"],
+      [{ rUpscale: true, rUpscaleTo: 8 }, "Upscale to"],
+      [{ rLayout: "frame", rWidth: null }, "canvas"],
+      [{ rLayout: "frame", rFill: 2 }, "fills between"],
+      [{ rLayout: "crop", rPadding: 150 }, "room around"],
+      [{ rBackground: "gradient", rGradientTo: "" }, "two colours"],
+      [{ rMaxSide: 0 }, "longest side"],
+    ];
+    for (const [change, expected] of refused) {
+      expect(problem({ ...base, ...change }), JSON.stringify(change)).toContain(expected);
+    }
   });
 });

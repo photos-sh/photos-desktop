@@ -6,6 +6,20 @@ All notable changes to this project are written here. The format follows
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-16
+
+### Added
+
+- **Recipe**, in the batch and the editor: several steps on one upload, sent
+  as one request and charged as one. Reads barcodes and text off the photo
+  as it came, removes text, upscales a small photo, removes the background,
+  frames or crops the product, adds a shadow and a background, and sets the
+  size, format and file size. The editor shows what was read, with *Copy*.
+  Reading barcodes and text needs a Photos.sh engine with reading steps in
+  recipes; an older one refuses such a recipe with a 422.
+
+## [1.1.0] - 2026-11-16
+
 ### Added
 
 - **Updates from inside the app.** At start the app asks GitHub whether a
@@ -31,7 +45,7 @@ All notable changes to this project are written here. The format follows
   subject found: nothing was cut out", not the crop's "No subject or face
   found: the crop is centred".
 
-## [1.0.0] - Unreleased
+## [1.0.0] - 2026-11-13
 
 The first version: Linux, macOS and Windows.
 

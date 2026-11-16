@@ -708,3 +708,80 @@ async fn a_batch_of_a_new_tool_is_free_until_the_account_lists_a_price() {
     assert_eq!(thumb.mime, "image/svg+xml");
     assert_eq!(thumb.bytes, b"<svg/>");
 }
+
+#[tokio::test]
+async fn the_editor_sends_a_recipe_in_one_request_and_keeps_what_it_read() {
+    let dir = tempfile::tempdir().unwrap();
+    let step_png = std::fs::read(write_png(dir.path(), "result.png", 8, 6)).unwrap();
+    let server = {
+        let step_png = step_png.clone();
+        MockServer::start(move |_, _| {
+            Reply::image("image/png", &step_png)
+                .header(
+                    "x-barcodes",
+                    r#"[{"format":"EAN-13","value":"3850104010017","gs1":"3850104010017"}]"#,
+                )
+                .header("x-text", r#"["Pr\u0161ut","500 g"]"#)
+        })
+        .await
+    };
+    let core = core_for(
+        dir.path(),
+        &server.url(),
+        MemoryKeychain::with_key(TEST_KEY),
+    );
+    let original = write_png(dir.path(), "ham.png", 40, 30);
+    core.editor_open(&original).unwrap();
+
+    let recipe: crate::recipe::Recipe = serde_json::from_str(
+        r##"{"barcodes": true, "text": true, "remove_background": true,
+            "background": {"kind": "color", "color": "#ffffff"}}"##,
+    )
+    .unwrap();
+    let snapshot = core
+        .editor_apply(EditorTool::Operation {
+            operation: Operation::Recipe { recipe },
+        })
+        .await
+        .unwrap();
+
+    let sent = server.requests();
+    assert_eq!(sent.len(), 1, "one request for every step");
+    assert_eq!(sent[0].path, "/api/v1/run");
+    assert!(sent[0].query.is_empty());
+    let part = sent[0].part("recipe").unwrap();
+    assert_eq!(part.content_type.as_deref(), Some("application/toml"));
+    assert_eq!(
+        String::from_utf8(part.bytes.clone()).unwrap(),
+        "[barcodes]\n[text]\n[remove_background]\n[background]\ncolor = \"#ffffff\"\n"
+    );
+
+    let step = &snapshot.current;
+    assert_eq!(
+        step.label,
+        "Recipe: barcodes, text, remove background, background"
+    );
+    assert_eq!(
+        step.note.as_deref(),
+        Some("Barcode 3850104010017; 2 lines of text read")
+    );
+    let readings = step.readings.as_ref().unwrap();
+    assert_eq!(readings.barcodes.as_ref().unwrap()[0].format, "EAN-13");
+    assert_eq!(
+        readings.text.as_deref().unwrap(),
+        ["Pršut".to_string(), "500 g".to_string()]
+    );
+    assert!(!readings.text_truncated);
+
+    // A recipe the service would refuse never leaves the app.
+    let refused = core
+        .editor_apply(EditorTool::Operation {
+            operation: Operation::Recipe {
+                recipe: serde_json::from_str(r#"{"shadow": "drop"}"#).unwrap(),
+            },
+        })
+        .await
+        .unwrap_err();
+    assert_eq!(refused.code, "invalid");
+    assert_eq!(server.requests().len(), 1);
+}

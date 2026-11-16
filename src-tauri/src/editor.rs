@@ -11,7 +11,7 @@ use serde::Serialize;
 use tempfile::TempDir;
 
 use crate::api::ImageResult;
-use crate::api::types::extension_for;
+use crate::api::types::{Readings, extension_for};
 use crate::batch::plan::is_image;
 use crate::preview;
 
@@ -55,6 +55,7 @@ struct Step {
     height: Option<u32>,
     bytes: u64,
     note: Option<String>,
+    readings: Option<Readings>,
 }
 
 /// A step as the UI sees it. Its picture is at the preview key
@@ -68,6 +69,8 @@ pub struct StepInfo {
     pub height: Option<u32>,
     pub bytes: Option<u64>,
     pub note: Option<String>,
+    /// What a recipe read off the photo: barcodes and text.
+    pub readings: Option<Readings>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -127,6 +130,7 @@ impl EditorSession {
                 height: size.map(|s| s.1),
                 bytes: Some(metadata.len()),
                 note: None,
+                readings: None,
             },
             steps: Vec::new(),
             cursor: 0,
@@ -193,6 +197,7 @@ impl EditorSession {
             height: result.height,
             bytes: result.bytes.len() as u64,
             note: result.note(),
+            readings: result.readings.clone(),
         });
         self.cursor = self.steps.len();
         Ok(())
@@ -313,6 +318,7 @@ fn info(step: &Step) -> StepInfo {
         height: step.height,
         bytes: Some(step.bytes),
         note: step.note.clone(),
+        readings: step.readings.clone(),
     }
 }
 
