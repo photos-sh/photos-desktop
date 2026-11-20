@@ -1,6 +1,16 @@
 <script lang="ts">
   import { explain } from "../lib/errors";
-  import { FORMATS, MAX_MARK_TEXT, POSITIONS, SHAPES, choice, usesOutput, type Draft } from "../lib/operations";
+  import {
+    FORMATS,
+    MAX_MARK_TEXT,
+    MODELS,
+    POSITIONS,
+    SHAPES,
+    choice,
+    modelHelp,
+    usesOutput,
+    type Draft,
+  } from "../lib/operations";
   import type { AppError, Catalog } from "../lib/types";
   import Slider from "./Slider.svelte";
 
@@ -34,6 +44,15 @@
   {/if}
 
   {#if draft.kind === "remove_background"}
+    <div class="field">
+      <label for="{prefix}-model">Model</label>
+      <select class="select" id="{prefix}-model" aria-describedby="{prefix}-model-help" bind:value={draft.model}>
+        {#each MODELS as model (model.value)}
+          <option value={model.value}>{model.label}</option>
+        {/each}
+      </select>
+      <span class="help" id="{prefix}-model-help">{modelHelp(draft.model)}</span>
+    </div>
     <div class="field">
       <label class="check">
         <input type="checkbox" aria-describedby="{prefix}-studio-help" bind:checked={draft.studio} /> Studio shot
@@ -457,6 +476,15 @@
       {/if}
       <label class="check"><input type="checkbox" bind:checked={draft.rCutout} /> Remove background</label>
       {#if draft.rCutout}
+        <div class="field indent">
+          <label for="{prefix}-r-model">Model</label>
+          <select class="select" id="{prefix}-r-model" aria-describedby="{prefix}-r-model-help" bind:value={draft.rModel}>
+            {#each MODELS as model (model.value)}
+              <option value={model.value}>{model.label}</option>
+            {/each}
+          </select>
+          <span class="help" id="{prefix}-r-model-help">{modelHelp(draft.rModel)}</span>
+        </div>
         <label class="check indent">
           <input type="checkbox" bind:checked={draft.rStudio} /> Studio shot: keep the box or lid shown with it
         </label>

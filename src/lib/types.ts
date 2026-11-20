@@ -5,6 +5,8 @@ export type Format = "png" | "jpg" | "webp" | "avif";
 export type Fit = "contain" | "cover" | "fill";
 export type TextRegion = "background" | "all";
 export type Shadow = "none" | "contact" | "drop";
+/** The model remove background finds the subject with; the API uses `atlas` when none is sent. */
+export type Model = "atlas" | "lumen" | "muse";
 export type FaceMode = "blur" | "pixelate" | "fill";
 export type CropFocus = "subject" | "face";
 export type Position =
@@ -88,6 +90,8 @@ export interface Recipe {
   /** Upscale a photo whose longest side is under this many pixels. */
   upscale_to?: number;
   remove_background?: boolean;
+  /** Left out, the service uses `atlas`. */
+  model?: Model;
   studio?: boolean;
   layout?:
     | { kind: "frame"; width: number; height: number; /** Percent. */ fill?: number; bottom?: boolean }
@@ -108,6 +112,8 @@ export type Operation =
       crop?: boolean;
       padding?: number;
       shadow?: Shadow;
+      /** The model that finds the subject; left out, the API uses `atlas`. */
+      model?: Model;
       /** A product on a plain, light backdrop: keep its box or lid too. */
       studio?: boolean;
       format?: Format;

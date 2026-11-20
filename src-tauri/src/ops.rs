@@ -63,6 +63,31 @@ impl Shadow {
     }
 }
 
+/// The model that finds the subject (`model=` of remove background). Each
+/// costs the same; left out, the API uses `atlas`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Model {
+    /// Everyday product photos: a product alone or with its box, on any
+    /// backdrop. The API's default.
+    Atlas,
+    /// Pale packaging on a light backdrop, and close-ups where the product
+    /// fills the photo.
+    Lumen,
+    /// People: portraits, and models wearing the product.
+    Muse,
+}
+
+impl Model {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Atlas => "atlas",
+            Self::Lumen => "lumen",
+            Self::Muse => "muse",
+        }
+    }
+}
+
 /// How faces are hidden (`mode=` of blur faces).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -205,6 +230,9 @@ pub enum Operation {
         /// A shadow under the subject; none when left out.
         #[serde(default)]
         shadow: Option<Shadow>,
+        /// The model that finds the subject; the API's default when left out.
+        #[serde(default)]
+        model: Option<Model>,
         /// A studio shot (a product on a plain, light backdrop): also keep
         /// what stands out from the backdrop and touches the product, such
         /// as its box or lid.
@@ -681,6 +709,7 @@ impl Operation {
                 crop,
                 padding,
                 shadow,
+                model,
                 studio,
                 format,
                 quality,
@@ -690,6 +719,7 @@ impl Operation {
                 // Padding only means something when cropping.
                 push(&mut q, "padding", padding.filter(|_| *crop));
                 push(&mut q, "shadow", shadow.map(Shadow::as_str));
+                push(&mut q, "model", model.map(Model::as_str));
                 push(&mut q, "studio", studio.then_some("true"));
                 push_output(&mut q, *format, *quality);
             }
@@ -928,6 +958,7 @@ mod tests {
             crop: true,
             padding: Some(20),
             shadow: Some(Shadow::Contact),
+            model: Some(Model::Lumen),
             studio: true,
             format: Some(Format::Jpg),
             quality: Some(90),
@@ -939,6 +970,7 @@ mod tests {
                 ("crop", "true"),
                 ("padding", "20"),
                 ("shadow", "contact"),
+                ("model", "lumen"),
                 ("studio", "true"),
                 ("format", "jpg"),
                 ("quality", "90")
@@ -950,6 +982,7 @@ mod tests {
             crop: false,
             padding: Some(20),
             shadow: None,
+            model: None,
             studio: false,
             format: None,
             quality: None,
@@ -969,6 +1002,18 @@ mod tests {
         let op: Operation =
             serde_json::from_str(r#"{"kind":"remove_background","studio":false}"#).unwrap();
         assert!(op.query().is_empty());
+        // A model is sent only when one is given; left out, the API uses `atlas`.
+        for model in ["atlas", "lumen", "muse"] {
+            let op: Operation = serde_json::from_str(&format!(
+                r#"{{"kind":"remove_background","model":"{model}","studio":true}}"#
+            ))
+            .unwrap();
+            assert_eq!(pairs(&op.query()), [("model", model), ("studio", "true")]);
+        }
+        assert!(
+            serde_json::from_str::<Operation>(r#"{"kind":"remove_background","model":"orbit"}"#)
+                .is_err()
+        );
     }
 
     fn parsed(json: &str) -> Operation {

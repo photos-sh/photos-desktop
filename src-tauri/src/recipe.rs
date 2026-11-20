@@ -9,7 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::ops::{Format, InvalidOperation, Shadow, TextRegion};
+use crate::ops::{Format, InvalidOperation, Model, Shadow, TextRegion};
 
 /// What the UI sends: each step is on when it is set.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -25,6 +25,9 @@ pub struct Recipe {
     /// Upscale a photo whose longest side is under this many pixels.
     pub upscale_to: Option<u32>,
     pub remove_background: bool,
+    /// The model that finds the subject; the service's default (`atlas`)
+    /// when left out.
+    pub model: Option<Model>,
     /// Also keep what stands out from a plain backdrop (a box, a lid).
     pub studio: bool,
     pub layout: Option<Layout>,
@@ -222,12 +225,14 @@ impl Recipe {
             table("upscale", &[format!("min_side = {size}")]);
         }
         if self.remove_background {
-            let studio = if self.studio {
-                vec!["studio = true".to_string()]
-            } else {
-                Vec::new()
-            };
-            table("remove_background", &studio);
+            let mut lines = Vec::new();
+            if let Some(model) = self.model {
+                lines.push(format!("model = {}", quote(model.as_str())));
+            }
+            if self.studio {
+                lines.push("studio = true".to_string());
+            }
+            table("remove_background", &lines);
         }
         match &self.layout {
             Some(Layout::Frame {
@@ -339,7 +344,7 @@ mod tests {
     fn every_step_becomes_its_table() {
         let r = recipe(
             r##"{"barcodes": true, "all_formats": true, "text": true, "remove_text": "all",
-                "upscale_to": 1000, "remove_background": true, "studio": true,
+                "upscale_to": 1000, "remove_background": true, "model": "lumen", "studio": true,
                 "layout": {"kind": "frame", "width": 2000, "height": 1600, "fill": 85, "bottom": true},
                 "shadow": "contact", "background": {"kind": "gradient", "from": "#ffffff", "to": "#e6e9ed"},
                 "format": "webp", "quality": 85, "max_side": 1600, "max_bytes": 300000}"##,
@@ -348,7 +353,7 @@ mod tests {
         assert_eq!(
             r.to_toml(),
             "[barcodes]\nall_formats = true\n[text]\n[remove_text]\nregion = \"all\"\n\
-             [upscale]\nmin_side = 1000\n[remove_background]\nstudio = true\n\
+             [upscale]\nmin_side = 1000\n[remove_background]\nmodel = \"lumen\"\nstudio = true\n\
              [frame]\nwidth = 2000\nheight = 1600\nfill = 0.85\nalign = \"bottom\"\n\
              [shadow]\nkind = \"contact\"\n\
              [background]\ngradient = [\"#ffffff\", \"#e6e9ed\"]\n\
@@ -367,6 +372,10 @@ mod tests {
         );
         r.validate().unwrap();
         assert_eq!(r.to_toml(), "[remove_background]\n[crop]\n");
+        // A model chosen is sent; none chosen leaves the service's default.
+        let r = recipe(r##"{"remove_background": true, "model": "muse"}"##);
+        r.validate().unwrap();
+        assert_eq!(r.to_toml(), "[remove_background]\nmodel = \"muse\"\n");
         let r = recipe(
             r##"{"remove_background": true, "layout": {"kind": "crop", "padding": 4},
                 "background": {"kind": "blur"}}"##,

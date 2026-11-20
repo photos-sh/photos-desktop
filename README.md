@@ -11,10 +11,11 @@ Linux, macOS and Windows.
 **Batch.** Drop photos or whole folders on the window (or pick them), choose
 one operation, and start:
 
-- remove background (with a shadow under the product, if you want one; for
-  a studio shot, keeping the box or lid shown with the product), upscale,
-  remove text, resize / convert / compress, fix for a marketplace (Amazon,
-  eBay, Etsy, ...), run a preset, or a recipe of your own (below);
+- remove background (with a choice of model: Atlas, Lumen or Muse; a
+  shadow under the product, if you want one; for a studio shot, keeping the
+  box or lid shown with the product), upscale, remove text, resize / convert
+  / compress, fix for a marketplace (Amazon, eBay, Etsy, ...), run a preset,
+  or a recipe of your own (below);
 - enhance (light and colour: automatic, or your own brightness, contrast,
   saturation and sharpening), denoise, colourise a black-and-white photo,
   restore faces, hide faces (blurred, pixelated or covered);
@@ -36,7 +37,8 @@ one operation, and start:
 
 **Editor.** Open or drop one photo and apply tools one after another:
 
-- remove background (transparent or on a colour), upscale, remove text,
+- remove background (with a choice of model, transparent or on a colour),
+  upscale, remove text,
   erase (paint over an object with a brush), select object (click an object
   to cut it out), enhance, denoise, colourise, restore faces, hide faces,
   crop to a shape, expand, resize / convert, watermark, fix for a
@@ -50,7 +52,8 @@ one operation, and start:
 
 **Recipes.** In the batch and the editor, *Recipe* runs several steps on one
 upload, as one request charged as one: read the barcodes and the text, remove
-text, upscale a small photo, remove the background, place the product on a
+text, upscale a small photo, remove the background (with a choice of model
+and a studio shot), place the product on a
 canvas of a set size or crop close around it, add a shadow and a background
 (white, a colour, a gradient or the photo's own, blurred), and set the size,
 format and file size. The steps always run in that order. Barcodes and text
@@ -96,6 +99,21 @@ and (advanced) the API's base URL.
   covered, are not found, so look at that count before relying on a result.
   Only covering a face leaves nothing of it; blur and pixelation stop a
   person from recognising it.
+- **Model** (an option of remove background, also in a recipe) is what
+  finds the subject. Each costs the same; when one drops part of what you
+  sell, try another.
+  - **Atlas** (the default): everyday product photos, a product alone or
+    with its box, on any backdrop.
+  - **Lumen**: pale packaging on a light backdrop, such as a cream or wooden
+    box beside a bottle (Atlas can keep the bottle and drop the box), and
+    close-ups where the product fills the photo. It may keep a dark backdrop
+    at the photo's edge, and can cut away part of an open frame or wire
+    stand.
+  - **Muse**: people, in portraits and as models wearing the product.
+
+  With Atlas the app sends no `model`, so the service's default applies;
+  otherwise it sends `model=lumen` or `model=muse`. Studio shot works with
+  every model.
 - **Studio shot** (an option of remove background) is for a product on a
   plain, light backdrop, as in a light tent. The cutout also keeps what
   clearly stands out from the backdrop and touches the product, such as the

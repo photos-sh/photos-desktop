@@ -6,6 +6,23 @@ All notable changes to this project are written here. The format follows
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-20
+
+### Added
+
+- **Model**, an option of remove background in the batch and the editor, and
+  of remove background in a recipe: which model finds the subject. *Atlas*
+  (the default) is for everyday product photos, a product alone or with its
+  box, on any backdrop. *Lumen* is for pale packaging on a light backdrop,
+  such as a cream or wooden box beside a bottle, and close-ups where the
+  product fills the photo; it may keep a dark backdrop at the photo's edge,
+  and can cut away part of an open frame or wire stand. *Muse* is for
+  people: portraits, and models wearing the product. Each costs the same.
+  With Atlas the app sends no `model`, so the service's default applies;
+  otherwise it sends `model=lumen` or `model=muse` (in a recipe, `model` in
+  `[remove_background]`). Choosing a model needs Photos.sh engine 0.1.14 or
+  newer.
+
 ## [1.2.0] - 2026-11-16
 
 ### Added

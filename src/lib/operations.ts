@@ -8,6 +8,7 @@ import type {
   FaceMode,
   Fit,
   Format,
+  Model,
   Operation,
   OperationKind,
   Position,
@@ -139,6 +140,34 @@ export const FORMATS: readonly { value: Format; label: string }[] = [
   { value: "avif", label: "AVIF" },
 ];
 
+/** The models remove background can find the subject with. Each costs the
+ *  same; the first is the API's default and is not sent. */
+export const MODELS: readonly { value: Model; label: string; help: string }[] = [
+  {
+    value: "atlas",
+    label: "Atlas (default)",
+    help: "Everyday product photos: a product alone or with its box, on any backdrop.",
+  },
+  {
+    value: "lumen",
+    label: "Lumen",
+    help:
+      "Pale packaging on a light backdrop, such as a cream or wooden box beside a bottle (Atlas can keep " +
+      "the bottle and drop the box), and close-ups where the product fills the photo. It may keep a dark " +
+      "backdrop at the photo's edge, and can cut away part of an open frame or wire stand.",
+  },
+  {
+    value: "muse",
+    label: "Muse",
+    help: "People: portraits, and models wearing the product.",
+  },
+];
+
+/** What a model is for, in a sentence or two. */
+export function modelHelp(model: Model): string {
+  return MODELS.find((m) => m.value === model)?.help ?? "";
+}
+
 /** The shapes crop and expand offer, as width:height. */
 export const SHAPES: readonly { value: string; label: string }[] = [
   { value: "1:1", label: "1:1 (square)" },
@@ -194,6 +223,8 @@ export interface Draft {
   crop: boolean;
   padding: number | null;
   shadow: Shadow;
+  /** The model that finds the subject: "atlas", the API's default, is not sent. */
+  model: Model;
   /** A studio shot: keep what stands out from the backdrop and touches the product. */
   studio: boolean;
   // upscale
@@ -255,6 +286,7 @@ export interface Draft {
   rUpscale: boolean;
   rUpscaleTo: number | null;
   rCutout: boolean;
+  rModel: Model;
   rStudio: boolean;
   rLayout: "none" | "frame" | "crop";
   rWidth: number | null;
@@ -281,6 +313,7 @@ export function newDraft(kind: OperationKind = "remove_background", format: Form
     crop: false,
     padding: null,
     shadow: "none",
+    model: "atlas",
     studio: false,
     scale: 2,
     region: "background",
@@ -326,6 +359,7 @@ export function newDraft(kind: OperationKind = "remove_background", format: Form
     rUpscale: false,
     rUpscaleTo: 1000,
     rCutout: true,
+    rModel: "atlas",
     rStudio: false,
     rLayout: "none",
     rWidth: 2000,
@@ -509,6 +543,7 @@ function buildRecipe(draft: Draft): Recipe {
   if (draft.rUpscale && draft.rUpscaleTo != null) r.upscale_to = draft.rUpscaleTo;
   if (draft.rCutout) {
     r.remove_background = true;
+    if (draft.rModel !== "atlas") r.model = draft.rModel;
     if (draft.rStudio) r.studio = true;
     if (draft.rLayout === "frame" && draft.rWidth != null && draft.rHeight != null) {
       r.layout = { kind: "frame", width: draft.rWidth, height: draft.rHeight };
@@ -573,6 +608,7 @@ export function build(draft: Draft): Operation {
         if (draft.padding != null && draft.padding > 0) op.padding = draft.padding;
       }
       if (draft.shadow !== "none") op.shadow = draft.shadow;
+      if (draft.model !== "atlas") op.model = draft.model;
       if (draft.studio) op.studio = true;
       return op;
     }

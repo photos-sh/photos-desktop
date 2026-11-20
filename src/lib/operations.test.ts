@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   MAX_MARK_TEXT,
+  MODELS,
   OPERATIONS,
   POSITIONS,
   SHAPES,
@@ -54,6 +55,22 @@ describe("build", () => {
     expect(build({ ...newDraft(), studio: false })).toEqual({ kind: "remove_background" });
     // Another tool does not take it.
     expect(build({ ...newDraft("upscale"), studio: true })).toEqual({ kind: "upscale", scale: 2 });
+  });
+
+  it("sends a model only when one other than the API's default is chosen", () => {
+    expect(newDraft().model).toBe("atlas");
+    expect(MODELS.map((m) => m.value)).toEqual(["atlas", "lumen", "muse"]);
+    expect(MODELS.map((m) => m.label)).toEqual(["Atlas (default)", "Lumen", "Muse"]);
+    expect(build({ ...newDraft(), model: "atlas" })).toEqual({ kind: "remove_background" });
+    expect(build({ ...newDraft(), model: "lumen" })).toEqual({ kind: "remove_background", model: "lumen" });
+    expect(build({ ...newDraft(), model: "muse", studio: true, background: "white" })).toEqual({
+      kind: "remove_background",
+      background: "white",
+      model: "muse",
+      studio: true,
+    });
+    // Another tool does not take it.
+    expect(build({ ...newDraft("upscale"), model: "muse" })).toEqual({ kind: "upscale", scale: 2 });
   });
 
   it("builds enhance: nothing for automatic, else only the sliders that moved", () => {
@@ -373,6 +390,7 @@ describe("recipe", () => {
       rRemoveText: true,
       rTextRegion: "all" as const,
       rUpscale: true,
+      rModel: "lumen" as const,
       rStudio: true,
       rLayout: "frame" as const,
       rBottom: true,
@@ -394,6 +412,7 @@ describe("recipe", () => {
         remove_text: "all",
         upscale_to: 1000,
         remove_background: true,
+        model: "lumen",
         studio: true,
         layout: { kind: "frame", width: 2000, height: 2000, fill: 85, bottom: true },
         shadow: "contact",
@@ -402,6 +421,16 @@ describe("recipe", () => {
         max_bytes: 300 * 1024,
       },
     });
+  });
+
+  it("leaves the model out at the default, and without remove background", () => {
+    expect(build({ ...newDraft("recipe"), rModel: "atlas" })).toEqual(build(newDraft("recipe")));
+    expect(build({ ...newDraft("recipe"), rModel: "muse" })).toEqual({
+      kind: "recipe",
+      recipe: { remove_background: true, model: "muse", background: { kind: "color", color: "white" } },
+    });
+    const readOnly = { ...newDraft("recipe"), rCutout: false, rBackground: "transparent" as const, rBarcodes: true };
+    expect(build({ ...readOnly, rModel: "muse" })).toEqual({ kind: "recipe", recipe: { barcodes: true } });
   });
 
   it("can only read, and then sends nothing else", () => {
