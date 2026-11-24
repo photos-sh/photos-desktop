@@ -238,6 +238,16 @@ pub enum Operation {
         /// as its box or lid.
         #[serde(default)]
         studio: bool,
+        /// Moves the cutout's edge, in pixels: inward when negative, outward
+        /// when positive (-10 to 10). 0, like none, is the API's default.
+        #[serde(default)]
+        shift: Option<f32>,
+        /// Makes the edge crisper: 0 to 100, about a pixel wide at 100.
+        #[serde(default)]
+        hardness: Option<f32>,
+        /// Irons out ripples in the outline, 0 to 10.
+        #[serde(default)]
+        smooth: Option<f32>,
         #[serde(default)]
         format: Option<Format>,
         #[serde(default)]
@@ -448,6 +458,36 @@ fn check_strength(strength: Option<f32>) -> Result<(), InvalidOperation> {
     check_range(strength, 1.0, 100.0, "The strength goes from 1 to 100.")
 }
 
+/// The edge controls of a cutout (`shift`, `hardness` and `smooth` of remove
+/// background, and of `[remove_background]` in a recipe), each in its range.
+pub fn check_edge(
+    shift: Option<f32>,
+    hardness: Option<f32>,
+    smooth: Option<f32>,
+) -> Result<(), InvalidOperation> {
+    check_range(
+        shift,
+        -10.0,
+        10.0,
+        "The edge shift goes from -10 to 10 pixels.",
+    )?;
+    check_range(
+        hardness,
+        0.0,
+        100.0,
+        "The edge hardness goes from 0 to 100.",
+    )?;
+    check_range(smooth, 0.0, 10.0, "The edge smoothing goes from 0 to 10.")
+}
+
+/// An edge control as it is sent: not at all at 0, the API's default, where
+/// it changes nothing. The request is then what it was before the API had
+/// these controls, which an engine from before them still takes (it refuses
+/// a parameter it does not know).
+pub fn edge(value: Option<f32>) -> Option<f32> {
+    value.filter(|v| *v != 0.0)
+}
+
 /// A shape as the API takes it: `4:5`, or a number like `1.5`.
 fn check_aspect(aspect: &str) -> Result<(), InvalidOperation> {
     let aspect = aspect.trim();
@@ -555,10 +595,14 @@ impl Operation {
         match self {
             Self::RemoveBackground {
                 background,
+                shift,
+                hardness,
+                smooth,
                 quality,
                 ..
             } => {
                 check_colour(background.as_deref(), EMPTY_BACKGROUND)?;
+                check_edge(*shift, *hardness, *smooth)?;
                 check_quality(*quality)
             }
             Self::Upscale { scale, quality, .. } => {
@@ -711,6 +755,9 @@ impl Operation {
                 shadow,
                 model,
                 studio,
+                shift,
+                hardness,
+                smooth,
                 format,
                 quality,
             } => {
@@ -721,6 +768,9 @@ impl Operation {
                 push(&mut q, "shadow", shadow.map(Shadow::as_str));
                 push(&mut q, "model", model.map(Model::as_str));
                 push(&mut q, "studio", studio.then_some("true"));
+                push(&mut q, "shift", edge(*shift));
+                push(&mut q, "hardness", edge(*hardness));
+                push(&mut q, "smooth", edge(*smooth));
                 push_output(&mut q, *format, *quality);
             }
             Self::Upscale {
@@ -960,6 +1010,9 @@ mod tests {
             shadow: Some(Shadow::Contact),
             model: Some(Model::Lumen),
             studio: true,
+            shift: Some(-1.5),
+            hardness: Some(50.0),
+            smooth: Some(2.5),
             format: Some(Format::Jpg),
             quality: Some(90),
         };
@@ -972,6 +1025,9 @@ mod tests {
                 ("shadow", "contact"),
                 ("model", "lumen"),
                 ("studio", "true"),
+                ("shift", "-1.5"),
+                ("hardness", "50"),
+                ("smooth", "2.5"),
                 ("format", "jpg"),
                 ("quality", "90")
             ]
@@ -984,6 +1040,9 @@ mod tests {
             shadow: None,
             model: None,
             studio: false,
+            shift: None,
+            hardness: None,
+            smooth: None,
             format: None,
             quality: None,
         };
@@ -1018,6 +1077,113 @@ mod tests {
 
     fn parsed(json: &str) -> Operation {
         serde_json::from_str(json).unwrap()
+    }
+
+    #[test]
+    fn the_edge_of_a_cutout() {
+        let op = parsed(r#"{"kind":"remove_background","shift":-1.5,"hardness":50,"smooth":2.5}"#);
+        assert!(op.validate().is_ok());
+        assert_eq!(
+            pairs(&op.query()),
+            [("shift", "-1.5"), ("hardness", "50"), ("smooth", "2.5")]
+        );
+        // Each is sent by itself, a shift outward too.
+        for (json, sent) in [
+            (
+                r#"{"kind":"remove_background","shift":-1}"#,
+                ("shift", "-1"),
+            ),
+            (
+                r#"{"kind":"remove_background","shift":0.5}"#,
+                ("shift", "0.5"),
+            ),
+            (
+                r#"{"kind":"remove_background","hardness":100}"#,
+                ("hardness", "100"),
+            ),
+            (
+                r#"{"kind":"remove_background","smooth":0.5}"#,
+                ("smooth", "0.5"),
+            ),
+        ] {
+            let op = parsed(json);
+            assert!(op.validate().is_ok(), "{json}");
+            assert_eq!(pairs(&op.query()), [sent], "{json}");
+        }
+        // At 0, the API's default, nothing is sent: the request is what it
+        // was before the API had these controls.
+        for json in [
+            r#"{"kind":"remove_background","shift":0,"hardness":0,"smooth":0}"#,
+            r#"{"kind":"remove_background","shift":-0.0,"hardness":0.0,"smooth":0.0}"#,
+            r#"{"kind":"remove_background","shift":null,"hardness":null,"smooth":null}"#,
+        ] {
+            let op = parsed(json);
+            assert!(op.validate().is_ok(), "{json}");
+            assert!(op.query().is_empty(), "{json}");
+            assert_eq!(
+                op.query(),
+                parsed(r#"{"kind":"remove_background"}"#).query()
+            );
+        }
+        let op = parsed(r#"{"kind":"remove_background","shift":0,"studio":true,"hardness":40}"#);
+        assert_eq!(pairs(&op.query()), [("studio", "true"), ("hardness", "40")]);
+        // The ends of each range are in it.
+        for ok in [
+            r#"{"kind":"remove_background","shift":-10,"hardness":0,"smooth":0}"#,
+            r#"{"kind":"remove_background","shift":10,"hardness":100,"smooth":10}"#,
+        ] {
+            assert!(parsed(ok).validate().is_ok(), "{ok}");
+        }
+        for (bad, message) in [
+            (
+                r#"{"kind":"remove_background","shift":-10.5}"#,
+                "The edge shift goes from -10 to 10 pixels.",
+            ),
+            (
+                r#"{"kind":"remove_background","shift":11}"#,
+                "The edge shift goes from -10 to 10 pixels.",
+            ),
+            (
+                r#"{"kind":"remove_background","hardness":-1}"#,
+                "The edge hardness goes from 0 to 100.",
+            ),
+            (
+                r#"{"kind":"remove_background","hardness":100.5}"#,
+                "The edge hardness goes from 0 to 100.",
+            ),
+            (
+                r#"{"kind":"remove_background","smooth":-0.5}"#,
+                "The edge smoothing goes from 0 to 10.",
+            ),
+            (
+                r#"{"kind":"remove_background","smooth":10.5}"#,
+                "The edge smoothing goes from 0 to 10.",
+            ),
+        ] {
+            assert_eq!(
+                parsed(bad).validate().unwrap_err().to_string(),
+                message,
+                "{bad}"
+            );
+        }
+        for value in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let op = Operation::RemoveBackground {
+                background: None,
+                crop: false,
+                padding: None,
+                shadow: None,
+                model: None,
+                studio: false,
+                shift: Some(value),
+                hardness: None,
+                smooth: None,
+                format: None,
+                quality: None,
+            };
+            assert!(op.validate().is_err(), "{value}");
+        }
+        // Another tool does not take them.
+        assert!(serde_json::from_str::<Operation>(r#"{"kind":"upscale","shift":-1}"#).is_err());
     }
 
     #[test]

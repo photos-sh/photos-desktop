@@ -9,7 +9,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::ops::{Format, InvalidOperation, Model, Shadow, TextRegion};
+use crate::ops::{Format, InvalidOperation, Model, Shadow, TextRegion, check_edge, edge};
 
 /// What the UI sends: each step is on when it is set.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -30,6 +30,13 @@ pub struct Recipe {
     pub model: Option<Model>,
     /// Also keep what stands out from a plain backdrop (a box, a lid).
     pub studio: bool,
+    /// Moves the cutout's edge, in pixels: inward when negative, outward
+    /// when positive (-10 to 10). 0, like none, is the service's default.
+    pub shift: Option<f32>,
+    /// Makes the edge crisper: 0 to 100, about a pixel wide at 100.
+    pub hardness: Option<f32>,
+    /// Irons out ripples in the outline, 0 to 10.
+    pub smooth: Option<f32>,
     pub layout: Option<Layout>,
     pub shadow: Option<Shadow>,
     pub background: Option<Backdrop>,
@@ -149,6 +156,7 @@ impl Recipe {
         {
             return invalid("Upscale to between 16 and 10,000 pixels.");
         }
+        check_edge(self.shift, self.hardness, self.smooth)?;
         match &self.layout {
             Some(Layout::Frame {
                 width,
@@ -231,6 +239,17 @@ impl Recipe {
             }
             if self.studio {
                 lines.push("studio = true".to_string());
+            }
+            // At 0 a key is left out: the table is then what it was before
+            // the service had these keys, and it refuses one it does not know.
+            for (key, value) in [
+                ("shift", self.shift),
+                ("hardness", self.hardness),
+                ("smooth", self.smooth),
+            ] {
+                if let Some(value) = edge(value) {
+                    lines.push(format!("{key} = {value}"));
+                }
             }
             table("remove_background", &lines);
         }
@@ -345,6 +364,7 @@ mod tests {
         let r = recipe(
             r##"{"barcodes": true, "all_formats": true, "text": true, "remove_text": "all",
                 "upscale_to": 1000, "remove_background": true, "model": "lumen", "studio": true,
+                "shift": -1.5, "hardness": 50, "smooth": 2.5,
                 "layout": {"kind": "frame", "width": 2000, "height": 1600, "fill": 85, "bottom": true},
                 "shadow": "contact", "background": {"kind": "gradient", "from": "#ffffff", "to": "#e6e9ed"},
                 "format": "webp", "quality": 85, "max_side": 1600, "max_bytes": 300000}"##,
@@ -354,6 +374,7 @@ mod tests {
             r.to_toml(),
             "[barcodes]\nall_formats = true\n[text]\n[remove_text]\nregion = \"all\"\n\
              [upscale]\nmin_side = 1000\n[remove_background]\nmodel = \"lumen\"\nstudio = true\n\
+             shift = -1.5\nhardness = 50\nsmooth = 2.5\n\
              [frame]\nwidth = 2000\nheight = 1600\nfill = 0.85\nalign = \"bottom\"\n\
              [shadow]\nkind = \"contact\"\n\
              [background]\ngradient = [\"#ffffff\", \"#e6e9ed\"]\n\
@@ -376,6 +397,31 @@ mod tests {
         let r = recipe(r##"{"remove_background": true, "model": "muse"}"##);
         r.validate().unwrap();
         assert_eq!(r.to_toml(), "[remove_background]\nmodel = \"muse\"\n");
+        // An edge control is sent when it is not 0, a shift inward or outward.
+        let r = recipe(r##"{"remove_background": true, "shift": -2}"##);
+        r.validate().unwrap();
+        assert_eq!(r.to_toml(), "[remove_background]\nshift = -2\n");
+        let r =
+            recipe(r##"{"remove_background": true, "shift": 0.5, "hardness": 0, "smooth": 10}"##);
+        r.validate().unwrap();
+        assert_eq!(
+            r.to_toml(),
+            "[remove_background]\nshift = 0.5\nsmooth = 10\n"
+        );
+        // At 0, the service's default, the recipe is what it was without them.
+        for zero in [
+            r##"{"remove_background": true, "shift": 0, "hardness": 0, "smooth": 0}"##,
+            r##"{"remove_background": true, "shift": -0.0, "hardness": 0.0, "smooth": 0.0}"##,
+            r##"{"remove_background": true, "shift": null, "hardness": null, "smooth": null}"##,
+        ] {
+            let r = recipe(zero);
+            r.validate().unwrap();
+            assert_eq!(r.to_toml(), "[remove_background]\n", "{zero}");
+        }
+        // Without remove background there is no edge to move.
+        let r = recipe(r##"{"barcodes": true, "shift": -2, "hardness": 50, "smooth": 3}"##);
+        r.validate().unwrap();
+        assert_eq!(r.to_toml(), "[barcodes]\n");
         let r = recipe(
             r##"{"remove_background": true, "layout": {"kind": "crop", "padding": 4},
                 "background": {"kind": "blur"}}"##,
@@ -435,6 +481,30 @@ mod tests {
                 r##"{"remove_background": true, "background": {"kind": "gradient", "from": "#fff", "to": " "}}"##,
                 "bottom colour",
             ),
+            (
+                r##"{"remove_background": true, "shift": -10.5}"##,
+                "edge shift goes from -10 to 10",
+            ),
+            (
+                r##"{"remove_background": true, "shift": 11}"##,
+                "edge shift goes from -10 to 10",
+            ),
+            (
+                r##"{"remove_background": true, "hardness": -1}"##,
+                "edge hardness goes from 0 to 100",
+            ),
+            (
+                r##"{"remove_background": true, "hardness": 101}"##,
+                "edge hardness goes from 0 to 100",
+            ),
+            (
+                r##"{"remove_background": true, "smooth": -0.5}"##,
+                "edge smoothing goes from 0 to 10",
+            ),
+            (
+                r##"{"remove_background": true, "smooth": 10.5}"##,
+                "edge smoothing goes from 0 to 10",
+            ),
             (r##"{"barcodes": true, "quality": 0}"##, "Quality"),
             (r##"{"max_side": 0}"##, "longest side"),
             (r##"{"max_bytes": 0}"##, "size limit"),
@@ -447,6 +517,19 @@ mod tests {
         recipe(r##"{"shadow": "none", "text": true}"##)
             .validate()
             .unwrap();
+        // The ends of the edge controls' ranges are in them.
+        for ok in [
+            r##"{"remove_background": true, "shift": -10, "hardness": 0, "smooth": 0}"##,
+            r##"{"remove_background": true, "shift": 10, "hardness": 100, "smooth": 10}"##,
+        ] {
+            recipe(ok).validate().unwrap();
+        }
+        let nan = Recipe {
+            remove_background: true,
+            shift: Some(f32::NAN),
+            ..Recipe::default()
+        };
+        assert!(nan.validate().is_err());
         // With a background, JPEG is fine.
         recipe(
             r##"{"remove_background": true, "format": "jpg", "background": {"kind": "color", "color": "white"}}"##,

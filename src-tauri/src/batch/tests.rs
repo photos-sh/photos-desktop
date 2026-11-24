@@ -45,6 +45,9 @@ fn remove_background() -> Operation {
         shadow: None,
         model: None,
         studio: false,
+        shift: None,
+        hardness: None,
+        smooth: None,
         format: None,
         quality: None,
     }
@@ -103,6 +106,9 @@ async fn processes_every_file_and_names_results_by_source_and_type() {
         shadow: None,
         model: None,
         studio: false,
+        shift: None,
+        hardness: None,
+        smooth: None,
         format: Some(Format::Png),
         quality: None,
     };

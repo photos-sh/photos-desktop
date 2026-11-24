@@ -5,7 +5,7 @@
 // Add `?key=none` to start without an API key, `?credits=3` for an account
 // that cannot pay for much, `?keychain=none` for a system without a
 // keychain, `?fail=unauthorized` to make every API call fail with that
-// code, `?update=1.4.0` for a newer version to offer (`?update=fail` for a
+// code, `?update=1.5.0` for a newer version to offer (`?update=fail` for a
 // check that fails). `window.__mock.drop([...paths])` plays a file drop.
 //
 // Nothing here is in a normal build (see main.ts).
@@ -528,7 +528,7 @@ async function handle(command: string, args: Args): Promise<unknown> {
       const version = params.get("update");
       if (version === "fail") fail("update_failed", "Could not check for updates: error sending request");
       if (version === null) return null;
-      return { version, current_version: __APP_VERSION__, notes: "- A choice of model for remove background.\n- Studio shot for remove background." };
+      return { version, current_version: __APP_VERSION__, notes: "- Edge shift, hardness and smoothing for remove background.\n- A choice of model for remove background." };
     }
     case "update_install":
       // A download in ten steps; a real install then restarts the app.

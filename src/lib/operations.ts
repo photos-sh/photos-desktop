@@ -168,6 +168,63 @@ export function modelHelp(model: Model): string {
   return MODELS.find((m) => m.value === model)?.help ?? "";
 }
 
+/** A control of a cutout's edge. */
+export interface EdgeControl {
+  /** Its name in the API and in a recipe, and its field in the draft. */
+  field: "shift" | "hardness" | "smooth";
+  /** Its field in the draft of a recipe. */
+  recipeField: "rShift" | "rHardness" | "rSmooth";
+  label: string;
+  min: number;
+  max: number;
+  /** What the field's arrows move it by. Values between the steps are fine. */
+  step: number;
+  help: string;
+  /** What is said of a value outside the range. */
+  outside: string;
+}
+
+/** The edge controls of remove background, alone and in a recipe. Each rests
+ *  at 0, the API's default, where it changes nothing and is not sent. */
+export const EDGES: readonly EdgeControl[] = [
+  {
+    field: "shift",
+    recipeField: "rShift",
+    label: "Edge shift (px)",
+    min: -10,
+    max: 10,
+    step: 0.5,
+    help:
+      "Moves the cutout's edge, from -10 to 10: negative inward, positive outward. -1 to -2 trims the light " +
+      "rim a dark product shows on a dark page.",
+    outside: "The edge shift goes from -10 to 10 pixels.",
+  },
+  {
+    field: "hardness",
+    recipeField: "rHardness",
+    label: "Edge hardness",
+    min: 0,
+    max: 100,
+    step: 5,
+    help:
+      "Makes the edge crisper, from 0 to 100: about a pixel wide at 100. On a dark page, pair it with a " +
+      "small negative shift.",
+    outside: "The edge hardness goes from 0 to 100.",
+  },
+  {
+    field: "smooth",
+    recipeField: "rSmooth",
+    label: "Edge smoothing",
+    min: 0,
+    max: 10,
+    step: 0.5,
+    help:
+      "Irons out ripples in the outline, from 0 to 10. From about 4 it rounds small corners and can break " +
+      "thin parts such as a wire stand.",
+    outside: "The edge smoothing goes from 0 to 10.",
+  },
+];
+
 /** The shapes crop and expand offer, as width:height. */
 export const SHAPES: readonly { value: string; label: string }[] = [
   { value: "1:1", label: "1:1 (square)" },
@@ -227,6 +284,10 @@ export interface Draft {
   model: Model;
   /** A studio shot: keep what stands out from the backdrop and touches the product. */
   studio: boolean;
+  /** The cutout's edge (see EDGES). Empty or 0, the API's default, is not sent. */
+  shift: number | null;
+  hardness: number | null;
+  smooth: number | null;
   // upscale
   scale: number;
   // remove text
@@ -288,6 +349,9 @@ export interface Draft {
   rCutout: boolean;
   rModel: Model;
   rStudio: boolean;
+  rShift: number | null;
+  rHardness: number | null;
+  rSmooth: number | null;
   rLayout: "none" | "frame" | "crop";
   rWidth: number | null;
   rHeight: number | null;
@@ -315,6 +379,9 @@ export function newDraft(kind: OperationKind = "remove_background", format: Form
     shadow: "none",
     model: "atlas",
     studio: false,
+    shift: null,
+    hardness: null,
+    smooth: null,
     scale: 2,
     region: "background",
     matching: "",
@@ -361,6 +428,9 @@ export function newDraft(kind: OperationKind = "remove_background", format: Form
     rCutout: true,
     rModel: "atlas",
     rStudio: false,
+    rShift: null,
+    rHardness: null,
+    rSmooth: null,
     rLayout: "none",
     rWidth: 2000,
     rHeight: 2000,
@@ -383,6 +453,23 @@ function within(n: number, min: number, max: number): boolean {
   return Number.isFinite(n) && n >= min && n <= max;
 }
 
+/** Whether a number field holds something to send. 0, like an empty field,
+ *  is the API's default: left out, the request is what it would be without
+ *  the option, which an engine from before the option still takes. */
+function isSet(n: number | null): n is number {
+  return n != null && n !== 0;
+}
+
+/** What is wrong with a cutout's edge controls, a recipe's or remove
+ *  background's own. An empty field is 0. */
+function edgeProblem(draft: Draft, recipe: boolean): string | null {
+  for (const edge of EDGES) {
+    const value = draft[recipe ? edge.recipeField : edge.field];
+    if (value != null && !within(value, edge.min, edge.max)) return edge.outside;
+  }
+  return null;
+}
+
 const COLOUR = /^#[0-9a-f]{6}$/i;
 /** A shape as width:height in whole numbers. */
 const SHAPE = /^[1-9]\d{0,3}:[1-9]\d{0,3}$/;
@@ -402,7 +489,7 @@ export function problem(draft: Draft): string | null {
       if (draft.crop && !isWhole(draft.padding, 0, 10_000)) {
         return "The margin is a whole number of pixels, 0 or more.";
       }
-      return null;
+      return edgeProblem(draft, false);
     case "upscale":
       if (!(draft.scale >= 1 && draft.scale <= 4)) return "The scale goes from 1 to 4.";
       return null;
@@ -507,6 +594,10 @@ function recipeProblem(draft: Draft): string | null {
   if (draft.rUpscale && !isWhole(draft.rUpscaleTo, 16, 10_000)) {
     return "Upscale to a whole number of pixels, 16 to 10,000.";
   }
+  if (draft.rCutout) {
+    const edge = edgeProblem(draft, true);
+    if (edge !== null) return edge;
+  }
   if (draft.rCutout && draft.rLayout === "frame") {
     if (!isWhole(draft.rWidth, 1, 10_000) || !isWhole(draft.rHeight, 1, 10_000) || draft.rWidth == null || draft.rHeight == null) {
       return "The canvas is a whole number of pixels a side, 1 to 10,000.";
@@ -545,6 +636,9 @@ function buildRecipe(draft: Draft): Recipe {
     r.remove_background = true;
     if (draft.rModel !== "atlas") r.model = draft.rModel;
     if (draft.rStudio) r.studio = true;
+    if (isSet(draft.rShift)) r.shift = draft.rShift;
+    if (isSet(draft.rHardness)) r.hardness = draft.rHardness;
+    if (isSet(draft.rSmooth)) r.smooth = draft.rSmooth;
     if (draft.rLayout === "frame" && draft.rWidth != null && draft.rHeight != null) {
       r.layout = { kind: "frame", width: draft.rWidth, height: draft.rHeight };
       if (draft.rFill != null) r.layout.fill = draft.rFill;
@@ -610,6 +704,9 @@ export function build(draft: Draft): Operation {
       if (draft.shadow !== "none") op.shadow = draft.shadow;
       if (draft.model !== "atlas") op.model = draft.model;
       if (draft.studio) op.studio = true;
+      if (isSet(draft.shift)) op.shift = draft.shift;
+      if (isSet(draft.hardness)) op.hardness = draft.hardness;
+      if (isSet(draft.smooth)) op.smooth = draft.smooth;
       return op;
     }
     case "upscale":

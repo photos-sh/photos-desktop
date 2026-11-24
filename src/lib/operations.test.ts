@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  EDGES,
   MAX_MARK_TEXT,
   MODELS,
   OPERATIONS,
@@ -71,6 +72,48 @@ describe("build", () => {
     });
     // Another tool does not take it.
     expect(build({ ...newDraft("upscale"), model: "muse" })).toEqual({ kind: "upscale", scale: 2 });
+  });
+
+  it("offers three edge controls, each resting at 0", () => {
+    expect(EDGES.map((e) => [e.field, e.label, e.min, e.max, e.step])).toEqual([
+      ["shift", "Edge shift (px)", -10, 10, 0.5],
+      ["hardness", "Edge hardness", 0, 100, 5],
+      ["smooth", "Edge smoothing", 0, 10, 0.5],
+    ]);
+    for (const edge of EDGES) {
+      expect(edge.help, edge.field).not.toBe("");
+      // A new draft has them empty, which is 0, and 0 is in every range.
+      expect(newDraft()[edge.field], edge.field).toBeNull();
+      expect(newDraft()[edge.recipeField], edge.field).toBeNull();
+      expect(edge.min <= 0 && edge.max >= 0, edge.field).toBe(true);
+    }
+  });
+
+  it("sends an edge control only when it is not 0, the API's default", () => {
+    const untouched = { kind: "remove_background" };
+    expect(build({ ...newDraft(), shift: 0, hardness: 0, smooth: 0 })).toEqual(untouched);
+    expect(build({ ...newDraft(), shift: -0, hardness: null, smooth: 0 })).toEqual(untouched);
+    // Not as `undefined` either: the request has no such key at all.
+    expect(Object.keys(build({ ...newDraft(), shift: 0, hardness: 0, smooth: 0 }))).toEqual(["kind"]);
+    expect(build({ ...newDraft(), shift: -1.5 })).toEqual({ kind: "remove_background", shift: -1.5 });
+    expect(build({ ...newDraft(), hardness: 50 })).toEqual({ kind: "remove_background", hardness: 50 });
+    expect(build({ ...newDraft(), smooth: 2.5 })).toEqual({ kind: "remove_background", smooth: 2.5 });
+    expect(build({ ...newDraft(), shift: 3, hardness: 0, smooth: null })).toEqual({ kind: "remove_background", shift: 3 });
+    // The ends of each range are sent as they are.
+    expect(
+      build({ ...newDraft(), model: "lumen", studio: true, background: "white", shift: -10, hardness: 100, smooth: 10 }),
+    ).toEqual({
+      kind: "remove_background",
+      background: "white",
+      model: "lumen",
+      studio: true,
+      shift: -10,
+      hardness: 100,
+      smooth: 10,
+    });
+    // Another tool does not take them, and a recipe has its own.
+    expect(build({ ...newDraft("upscale"), shift: -1, hardness: 50, smooth: 2 })).toEqual({ kind: "upscale", scale: 2 });
+    expect(build({ ...newDraft("recipe"), shift: -1, hardness: 50, smooth: 2 })).toEqual(build(newDraft("recipe")));
   });
 
   it("builds enhance: nothing for automatic, else only the sliders that moved", () => {
@@ -247,6 +290,32 @@ describe("problem", () => {
     expect(problem({ ...newDraft(), background: "colour", colour: "red" })).toMatch(/colour/);
   });
 
+  it("checks the edge controls against their ranges", () => {
+    const fine: [number | null, number | null, number | null][] = [
+      [null, null, null],
+      [0, 0, 0],
+      [-10, 0, 0],
+      [10, 100, 10],
+      [-1.5, 42, 0.25],
+    ];
+    for (const [shift, hardness, smooth] of fine) {
+      expect(problem({ ...newDraft(), shift, hardness, smooth }), `${shift} ${hardness} ${smooth}`).toBeNull();
+    }
+    const shift = "The edge shift goes from -10 to 10 pixels.";
+    const hardness = "The edge hardness goes from 0 to 100.";
+    const smooth = "The edge smoothing goes from 0 to 10.";
+    expect(problem({ ...newDraft(), shift: -10.5 })).toBe(shift);
+    expect(problem({ ...newDraft(), shift: 11 })).toBe(shift);
+    expect(problem({ ...newDraft(), shift: Number.NaN })).toBe(shift);
+    expect(problem({ ...newDraft(), hardness: -1 })).toBe(hardness);
+    expect(problem({ ...newDraft(), hardness: 100.5 })).toBe(hardness);
+    expect(problem({ ...newDraft(), hardness: Number.POSITIVE_INFINITY })).toBe(hardness);
+    expect(problem({ ...newDraft(), smooth: -0.5 })).toBe(smooth);
+    expect(problem({ ...newDraft(), smooth: 10.5 })).toBe(smooth);
+    // Another tool does not look at them.
+    expect(problem({ ...newDraft("upscale"), shift: 50, hardness: -5, smooth: 50 })).toBeNull();
+  });
+
   it("passes the new tools as they start, except a watermark without text", () => {
     for (const kind of ["enhance", "denoise", "colorize", "restore_faces", "blur_faces", "crop", "expand", "vectorize"] as const) {
       expect(problem(newDraft(kind)), kind).toBeNull();
@@ -392,6 +461,9 @@ describe("recipe", () => {
       rUpscale: true,
       rModel: "lumen" as const,
       rStudio: true,
+      rShift: -1.5,
+      rHardness: 50,
+      rSmooth: 2.5,
       rLayout: "frame" as const,
       rBottom: true,
       rShadow: "contact" as const,
@@ -414,6 +486,9 @@ describe("recipe", () => {
         remove_background: true,
         model: "lumen",
         studio: true,
+        shift: -1.5,
+        hardness: 50,
+        smooth: 2.5,
         layout: { kind: "frame", width: 2000, height: 2000, fill: 85, bottom: true },
         shadow: "contact",
         background: { kind: "gradient", from: "#ffffff", to: "#e6e9ed" },
@@ -433,6 +508,27 @@ describe("recipe", () => {
     expect(build({ ...readOnly, rModel: "muse" })).toEqual({ kind: "recipe", recipe: { barcodes: true } });
   });
 
+  it("leaves the edge controls out at 0, and without remove background", () => {
+    const untouched = build(newDraft("recipe"));
+    expect(build({ ...newDraft("recipe"), rShift: 0, rHardness: 0, rSmooth: 0 })).toEqual(untouched);
+    expect(build({ ...newDraft("recipe"), rShift: -0, rHardness: null, rSmooth: 0 })).toEqual(untouched);
+    expect(untouched).toEqual({
+      kind: "recipe",
+      recipe: { remove_background: true, background: { kind: "color", color: "white" } },
+    });
+    expect(build({ ...newDraft("recipe"), rShift: -2, rHardness: 0, rSmooth: 10 })).toEqual({
+      kind: "recipe",
+      recipe: { remove_background: true, shift: -2, smooth: 10, background: { kind: "color", color: "white" } },
+    });
+    // Remove background's own are not the recipe's.
+    expect(build({ ...newDraft("recipe"), shift: -2, hardness: 50, smooth: 3 })).toEqual(untouched);
+    const readOnly = { ...newDraft("recipe"), rCutout: false, rBackground: "transparent" as const, rBarcodes: true };
+    const edged = { ...readOnly, rShift: -2, rHardness: 500, rSmooth: 3 };
+    expect(build(edged)).toEqual({ kind: "recipe", recipe: { barcodes: true } });
+    // Nor are they checked then: the fields are not on screen.
+    expect(problem(edged)).toBeNull();
+  });
+
   it("can only read, and then sends nothing else", () => {
     const draft = { ...newDraft("recipe"), rCutout: false, rBackground: "transparent" as const, rBarcodes: true };
     expect(problem(draft)).toBeNull();
@@ -449,6 +545,12 @@ describe("recipe", () => {
       [{ rLayout: "frame", rWidth: null }, "canvas"],
       [{ rLayout: "frame", rFill: 2 }, "fills between"],
       [{ rLayout: "crop", rPadding: 150 }, "room around"],
+      [{ rShift: -11 }, "edge shift goes from -10 to 10"],
+      [{ rShift: 10.5 }, "edge shift goes from -10 to 10"],
+      [{ rHardness: 101 }, "edge hardness goes from 0 to 100"],
+      [{ rHardness: -5 }, "edge hardness goes from 0 to 100"],
+      [{ rSmooth: 11 }, "edge smoothing goes from 0 to 10"],
+      [{ rSmooth: -1 }, "edge smoothing goes from 0 to 10"],
       [{ rBackground: "gradient", rGradientTo: "" }, "two colours"],
       [{ rMaxSide: 0 }, "longest side"],
     ];

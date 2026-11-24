@@ -206,6 +206,9 @@ async fn the_editor_chains_tools_and_serves_its_pictures() {
                 shadow: None,
                 model: None,
                 studio: false,
+                shift: None,
+                hardness: None,
+                smooth: None,
                 format: Some(Format::Png),
                 quality: None,
             },
@@ -785,4 +788,123 @@ async fn the_editor_sends_a_recipe_in_one_request_and_keeps_what_it_read() {
         .unwrap_err();
     assert_eq!(refused.code, "invalid");
     assert_eq!(server.requests().len(), 1);
+}
+
+#[tokio::test]
+async fn the_edge_controls_reach_the_request_and_at_zero_nothing_does() {
+    let dir = tempfile::tempdir().unwrap();
+    let step_png = std::fs::read(write_png(dir.path(), "result.png", 8, 6)).unwrap();
+    let server = {
+        let step_png = step_png.clone();
+        MockServer::start(move |r, _| match r.path.as_str() {
+            "/api/v1/account" => Reply::json(200, r#"{"unlimited":true}"#),
+            _ => Reply::image("image/png", &step_png),
+        })
+        .await
+    };
+    let core = core_for(
+        dir.path(),
+        &server.url(),
+        MemoryKeychain::with_key(TEST_KEY),
+    );
+    core.editor_open(&write_png(dir.path(), "bottle.png", 40, 30))
+        .unwrap();
+    let apply = async |json: &str| {
+        let operation: Operation = serde_json::from_str(json).unwrap();
+        core.editor_apply(EditorTool::Operation { operation }).await
+    };
+
+    // The editor: a shift inward, with the edge made crisp and ironed out.
+    apply(r#"{"kind":"remove_background","shift":-1.5,"hardness":50,"smooth":2.5}"#)
+        .await
+        .unwrap();
+    // At 0 the request is the one the app sent before it had the controls.
+    apply(r#"{"kind":"remove_background","shift":0,"hardness":0,"smooth":0}"#)
+        .await
+        .unwrap();
+    apply(r#"{"kind":"remove_background"}"#).await.unwrap();
+    // In a recipe they are keys of `[remove_background]`, and at 0 they are not.
+    apply(
+        r#"{"kind":"recipe","recipe":{"remove_background":true,"shift":-2,"hardness":100,"smooth":0}}"#,
+    )
+    .await
+    .unwrap();
+    apply(
+        r#"{"kind":"recipe","recipe":{"remove_background":true,"shift":0,"hardness":0,"smooth":0}}"#,
+    )
+    .await
+    .unwrap();
+
+    let sent = server.requests();
+    assert_eq!(sent.len(), 5);
+    assert_eq!(sent[0].path, "/api/v1/remove-background");
+    assert_eq!(
+        pairs(&sent[0].query),
+        [("shift", "-1.5"), ("hardness", "50"), ("smooth", "2.5")]
+    );
+    for untouched in &sent[1..3] {
+        assert_eq!(untouched.path, "/api/v1/remove-background");
+        assert!(untouched.query.is_empty());
+    }
+    let toml = |r: &crate::testing::Recorded| {
+        String::from_utf8(r.part("recipe").unwrap().bytes.clone()).unwrap()
+    };
+    assert_eq!(sent[3].path, "/api/v1/run");
+    assert!(sent[3].query.is_empty());
+    assert_eq!(
+        toml(&sent[3]),
+        "[remove_background]\nshift = -2\nhardness = 100\n"
+    );
+    assert_eq!(toml(&sent[4]), "[remove_background]\n");
+
+    // A value outside its range never leaves the app.
+    for bad in [
+        r#"{"kind":"remove_background","shift":-11}"#,
+        r#"{"kind":"remove_background","hardness":101}"#,
+        r#"{"kind":"remove_background","smooth":10.5}"#,
+        r#"{"kind":"recipe","recipe":{"remove_background":true,"shift":10.5}}"#,
+    ] {
+        let refused = apply(bad).await.unwrap_err();
+        assert_eq!(refused.code, "invalid", "{bad}");
+    }
+    assert_eq!(server.requests().len(), 5);
+
+    // A batch sends them with every file.
+    core.batch_add(&[
+        write_fake(dir.path(), "a.jpg"),
+        write_fake(dir.path(), "b.jpg"),
+    ])
+    .unwrap();
+    let operation: Operation =
+        serde_json::from_str(r#"{"kind":"remove_background","shift":-1,"hardness":0}"#).unwrap();
+    let prepared = core.batch_prepare(operation, None).await.unwrap();
+    let summary = core
+        .batch_run(prepared, &Recorder::default())
+        .await
+        .unwrap();
+    assert_eq!((summary.done, summary.failed), (2, 0));
+    let files: Vec<_> = server
+        .requests()
+        .into_iter()
+        .filter(|r| r.method == "POST")
+        .skip(5)
+        .collect();
+    assert_eq!(files.len(), 2);
+    for r in &files {
+        assert_eq!(r.path, "/api/v1/remove-background");
+        assert_eq!(pairs(&r.query), [("shift", "-1")]);
+    }
+    let refused = core
+        .batch_prepare(
+            serde_json::from_str(r#"{"kind":"remove_background","shift":12}"#).unwrap(),
+            None,
+        )
+        .await
+        .err()
+        .unwrap();
+    assert_eq!(refused.code, "invalid");
+    assert_eq!(
+        refused.message,
+        "The edge shift goes from -10 to 10 pixels."
+    );
 }

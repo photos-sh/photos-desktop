@@ -1,6 +1,7 @@
 <script lang="ts">
   import { explain } from "../lib/errors";
   import {
+    EDGES,
     FORMATS,
     MAX_MARK_TEXT,
     MODELS,
@@ -61,6 +62,23 @@
         Product on a plain light backdrop: keep the box or lid shown with it.
       </span>
     </div>
+    {#each EDGES as edge (edge.field)}
+      <div class="field">
+        <label for="{prefix}-{edge.field}">{edge.label}</label>
+        <input
+          class="input"
+          id="{prefix}-{edge.field}"
+          type="number"
+          min={edge.min}
+          max={edge.max}
+          step={edge.step}
+          placeholder="0"
+          aria-describedby="{prefix}-{edge.field}-help"
+          bind:value={draft[edge.field]}
+        />
+        <span class="help" id="{prefix}-{edge.field}-help">{edge.help}</span>
+      </div>
+    {/each}
     <div class="field">
       <span class="label" id="{prefix}-bg-label">Background</span>
       <div class="row row--wrap" role="radiogroup" aria-labelledby="{prefix}-bg-label">
@@ -488,6 +506,23 @@
         <label class="check indent">
           <input type="checkbox" bind:checked={draft.rStudio} /> Studio shot: keep the box or lid shown with it
         </label>
+        {#each EDGES as edge (edge.field)}
+          <div class="field indent">
+            <label for="{prefix}-r-{edge.field}">{edge.label}</label>
+            <input
+              class="input"
+              id="{prefix}-r-{edge.field}"
+              type="number"
+              min={edge.min}
+              max={edge.max}
+              step={edge.step}
+              placeholder="0"
+              aria-describedby="{prefix}-r-{edge.field}-help"
+              bind:value={draft[edge.recipeField]}
+            />
+            <span class="help" id="{prefix}-r-{edge.field}-help">{edge.help}</span>
+          </div>
+        {/each}
       {/if}
     </div>
     {#if draft.rCutout}

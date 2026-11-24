@@ -93,6 +93,10 @@ export interface Recipe {
   /** Left out, the service uses `atlas`. */
   model?: Model;
   studio?: boolean;
+  /** The cutout's edge, as for remove background. Left out, each is 0. */
+  shift?: number;
+  hardness?: number;
+  smooth?: number;
   layout?:
     | { kind: "frame"; width: number; height: number; /** Percent. */ fill?: number; bottom?: boolean }
     | { kind: "crop"; /** Percent of the subject's longest side. */ padding?: number };
@@ -116,6 +120,12 @@ export type Operation =
       model?: Model;
       /** A product on a plain, light backdrop: keep its box or lid too. */
       studio?: boolean;
+      /** Moves the cutout's edge, in pixels, -10 to 10: inward when negative. Left out, 0. */
+      shift?: number;
+      /** How crisp the edge is, 0 to 100. Left out, 0. */
+      hardness?: number;
+      /** How much the outline's ripples are ironed out, 0 to 10. Left out, 0. */
+      smooth?: number;
       format?: Format;
       quality?: number;
     }

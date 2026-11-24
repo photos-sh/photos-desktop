@@ -1,6 +1,6 @@
 [package]
 name = "photos-desktop"
-version = "1.3.0"
+version = "1.4.0"
 description = "Photos.sh desktop app: batch-process and edit product photos with the Photos.sh API."
 authors = ["Vallic"]
 license = "MIT"

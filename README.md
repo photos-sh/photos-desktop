@@ -13,9 +13,9 @@ one operation, and start:
 
 - remove background (with a choice of model: Atlas, Lumen or Muse; a
   shadow under the product, if you want one; for a studio shot, keeping the
-  box or lid shown with the product), upscale, remove text, resize / convert
-  / compress, fix for a marketplace (Amazon, eBay, Etsy, ...), run a preset,
-  or a recipe of your own (below);
+  box or lid shown with the product; three controls for the cutout's edge),
+  upscale, remove text, resize / convert / compress, fix for a marketplace
+  (Amazon, eBay, Etsy, ...), run a preset, or a recipe of your own (below);
 - enhance (light and colour: automatic, or your own brightness, contrast,
   saturation and sharpening), denoise, colourise a black-and-white photo,
   restore faces, hide faces (blurred, pixelated or covered);
@@ -37,8 +37,8 @@ one operation, and start:
 
 **Editor.** Open or drop one photo and apply tools one after another:
 
-- remove background (with a choice of model, transparent or on a colour),
-  upscale, remove text,
+- remove background (with a choice of model and the edge controls,
+  transparent or on a colour), upscale, remove text,
   erase (paint over an object with a brush), select object (click an object
   to cut it out), enhance, denoise, colourise, restore faces, hide faces,
   crop to a shape, expand, resize / convert, watermark, fix for a
@@ -52,8 +52,8 @@ one operation, and start:
 
 **Recipes.** In the batch and the editor, *Recipe* runs several steps on one
 upload, as one request charged as one: read the barcodes and the text, remove
-text, upscale a small photo, remove the background (with a choice of model
-and a studio shot), place the product on a
+text, upscale a small photo, remove the background (with a choice of model,
+a studio shot and the edge controls), place the product on a
 canvas of a set size or crop close around it, add a shadow and a background
 (white, a colour, a gradient or the photo's own, blurred), and set the size,
 format and file size. The steps always run in that order. Barcodes and text
@@ -121,6 +121,21 @@ and (advanced) the API's base URL.
   otherwise come out half transparent. Shadows and the floor below the product are left
   out. A photo without a plain light backdrop is cut out as without the
   option. It is off by default.
+- **Edge shift**, **Edge hardness** and **Edge smoothing** (options of remove
+  background, also in a recipe) adjust the cutout's edge. Each is 0 by
+  default, which changes nothing.
+  - **Edge shift**, -10 to 10 pixels, moves the edge: inward when negative,
+    outward when positive. -1 to -2 trims the light rim a dark product shows
+    on a dark page.
+  - **Edge hardness**, 0 to 100, makes the edge crisper: about a pixel wide
+    at 100. On a dark page, pair it with a small negative shift.
+  - **Edge smoothing**, 0 to 10, irons out ripples in the outline. From
+    about 4 it rounds small corners and can break thin parts such as a wire
+    stand.
+
+  At 0 the app sends nothing for a control; otherwise it sends `shift`,
+  `hardness` or `smooth`. A value outside its range is refused before
+  anything is sent.
 - Three tools can mislead, and say so beside their options. **Colourise**
   guesses its colours: skin, sky and grass come out believable, the colour
   of clothes or a car is invented. **Restore faces** invents the detail it

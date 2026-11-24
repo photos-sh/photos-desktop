@@ -6,6 +6,26 @@ All notable changes to this project are written here. The format follows
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-23
+
+### Added
+
+- **Edge shift**, **Edge hardness** and **Edge smoothing**, options of remove
+  background in the batch and the editor, and of remove background in a
+  recipe: they adjust the cutout's edge. *Edge shift* (-10 to 10 pixels)
+  moves the edge, inward when negative and outward when positive; -1 to -2
+  trims the light rim a dark product shows on a dark page. *Edge hardness*
+  (0 to 100) makes the edge crisper, about a pixel wide at 100; on a dark
+  page, pair it with a small negative shift. *Edge smoothing* (0 to 10)
+  irons out ripples in the outline; from about 4 it rounds small corners and
+  can break thin parts such as a wire stand. Each is 0 by default. At 0 the
+  app sends nothing for it, so the request and the recipe are what they were
+  in 1.3.0; otherwise it sends `shift`, `hardness` or `smooth` (in a recipe,
+  the same keys in `[remove_background]`). A value outside its range is
+  refused before anything is sent. The controls need the Photos.sh API of
+  23 November 2026 or later; an older engine refuses a request that has one
+  with a 400, and a recipe that has one with a 422.
+
 ## [1.3.0] - 2026-11-20
 
 ### Added
